@@ -1,0 +1,5524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gaec Tisserand - Facturation</title>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Segoe UI", Tahoma, Verdana, sans-serif; -webkit-font-smoothing: antialiased; }
+#root { min-height: 100vh; min-height: 100dvh; }
+input, select, button { font-family: inherit; }
+input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+@media print{#root{display:none!important;}#print-zone{display:block!important;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+var useState = React.useState,
+  useMemo = React.useMemo,
+  useEffect = React.useEffect,
+  useRef = React.useRef,
+  useCallback = React.useCallback;
+firebase.initializeApp({
+  apiKey: "AIzaSyDzqTOEKAt5FP-2qK8sCN8baSF3foVgwOY",
+  authDomain: "gaec-tisserand.firebaseapp.com",
+  projectId: "gaec-tisserand",
+  storageBucket: "gaec-tisserand.firebasestorage.app",
+  messagingSenderId: "631365630632",
+  appId: "1:631365630632:web:a6a1fda2582e46a447609d"
+});
+var db = firebase.firestore();
+async function load(k, fb) {
+  try {
+    var doc = await db.collection("gaec").doc(k).get();
+    if (doc.exists) {
+      return doc.data().value;
+    }
+    return fb;
+  } catch (e) {
+    console.error("load error:", k, e);
+    return fb;
+  }
+}
+async function save(k, d) {
+  try {
+    await db.collection("gaec").doc(k).set({
+      value: d,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.error("save error:", k, e);
+  }
+}
+function subscribe(k, cb) {
+  return db.collection("gaec").doc(k).onSnapshot(function (doc) {
+    if (doc.exists) {
+      cb(doc.data().value);
+    }
+  }, function (err) {
+    console.error("subscribe error:", k, err);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GAEC TISSERAND — FACTURATION v3
+   Interface simplifiée pour utilisateur senior
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const EMETTEUR = {
+  nom: "Gaec Tisserand",
+  adresse: "Blanzey, 70220 Fougerolles",
+  rcs: "Lure D 389 031 949",
+  gestion: "92 D 67",
+  banque: "Crédit Agricole Fougerolles"
+};
+const DEFAULT_CLIENTS = [{
+  id: 1,
+  nom: "Leclerc Vesoul",
+  adresse: "Place de l'Oasis",
+  cp: "70000 Pusey"
+}, {
+  id: 2,
+  nom: "Carrefour Belfort",
+  adresse: "Route de Montbéliard",
+  cp: "90400 Andelnans"
+}, {
+  id: 3,
+  nom: "Carrefour Lure",
+  adresse: "Par la ba les mines",
+  cp: "70200 Lure"
+}, {
+  id: 4,
+  nom: "Cora Andelnans",
+  adresse: "",
+  cp: "90400 Andelnans"
+}, {
+  id: 5,
+  nom: "Leclerc Lure",
+  adresse: "Centre Commercial des Cloyes",
+  cp: "70220 Lure"
+}, {
+  id: 6,
+  nom: "Cora Remiremont",
+  adresse: "BP 20150",
+  cp: "88205 Remiremont"
+}, {
+  id: 7,
+  nom: "Intermarché Delle",
+  adresse: "Faubourg de Belfort",
+  cp: "90100 Delle"
+}];
+const DEFAULT_PRODUCTS = [{
+  id: "kirsch70",
+  nom: "Kirsch 70 cl",
+  tva: 20,
+  prixHT: 22.50,
+  volume: 70,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "mirabelle70",
+  nom: "Mirabelle 70 cl",
+  tva: 20,
+  prixHT: 21.67,
+  volume: 70,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "poire70",
+  nom: "Poire 70 cl",
+  tva: 20,
+  prixHT: 22.50,
+  volume: 70,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "prune70",
+  nom: "Prune 70 cl",
+  tva: 20,
+  prixHT: 20.00,
+  volume: 70,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "kirsch35",
+  nom: "Kirsch 35 cl",
+  tva: 20,
+  prixHT: 11.67,
+  volume: 35,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "mirabelle35",
+  nom: "Mirabelle 35 cl",
+  tva: 20,
+  prixHT: 10.84,
+  volume: 35,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "poire35",
+  nom: "Poire 35 cl",
+  tva: 20,
+  prixHT: 11.67,
+  volume: 35,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "prune35",
+  nom: "Prune 35 cl",
+  tva: 20,
+  prixHT: 10.84,
+  volume: 35,
+  alcool: 45,
+  cat: "Eaux-de-vie"
+}, {
+  id: "fluteKirsch",
+  nom: "Flûtes 35 cl Kirsch",
+  tva: 20,
+  prixHT: 12.09,
+  volume: 35,
+  alcool: 45,
+  cat: "Flûtes"
+}, {
+  id: "fluteMirabelle",
+  nom: "Flûtes 35 cl Mirabelle",
+  tva: 20,
+  prixHT: 11.67,
+  volume: 35,
+  alcool: 45,
+  cat: "Flûtes"
+}, {
+  id: "flutePoire",
+  nom: "Flûtes 35 cl Poire Williams",
+  tva: 20,
+  prixHT: 12.09,
+  volume: 35,
+  alcool: 45,
+  cat: "Flûtes"
+}, {
+  id: "perleNoire70",
+  nom: "Perle Noire 70cl",
+  tva: 20,
+  prixHT: 10.84,
+  volume: 70,
+  alcool: 18,
+  cat: "Perle Noire"
+}, {
+  id: "perleNoire35",
+  nom: "Perle Noire 35cl",
+  tva: 20,
+  prixHT: 5.84,
+  volume: 35,
+  alcool: 18,
+  cat: "Perle Noire"
+}, {
+  id: "murabelle70",
+  nom: "Mur'abelle 70cl",
+  tva: 20,
+  prixHT: 13.75,
+  volume: 70,
+  alcool: 18,
+  cat: "Liqueurs"
+}, {
+  id: "murabelle35",
+  nom: "Mur'abelle 35cl",
+  tva: 20,
+  prixHT: 7.09,
+  volume: 35,
+  alcool: 18,
+  cat: "Liqueurs"
+}, {
+  id: "schrik70",
+  nom: "Schrik 70cl",
+  tva: 20,
+  prixHT: 13.75,
+  volume: 70,
+  alcool: 18,
+  cat: "Liqueurs"
+}, {
+  id: "schrik35",
+  nom: "Schrik 35cl",
+  tva: 20,
+  prixHT: 7.09,
+  volume: 35,
+  alcool: 18,
+  cat: "Liqueurs"
+}, {
+  id: "prestigeKirsch",
+  nom: "Prestige Kirsch 50cl",
+  tva: 20,
+  prixHT: 18.34,
+  volume: 50,
+  alcool: 45,
+  cat: "Prestige"
+}, {
+  id: "prestigeMirabelle",
+  nom: "Prestige Mirabelle 50cl",
+  tva: 20,
+  prixHT: 17.92,
+  volume: 50,
+  alcool: 45,
+  cat: "Prestige"
+}, {
+  id: "prestigePoire",
+  nom: "Prestige Poire William 50cl",
+  tva: 20,
+  prixHT: 18.34,
+  volume: 50,
+  alcool: 45,
+  cat: "Prestige"
+}, {
+  id: "kirschAOC",
+  nom: "Kirsch AOC Bô 70cl",
+  tva: 20,
+  prixHT: 23.34,
+  volume: 70,
+  alcool: 45,
+  cat: "Spécialités"
+}, {
+  id: "symphonie20",
+  nom: "Bouteille Symphonie 20cl",
+  tva: 20,
+  prixHT: 8.00,
+  volume: 20,
+  alcool: 40,
+  cat: "Spécialités"
+}, {
+  id: "vieilleCuvee",
+  nom: "Bouteille Vieille Cuvée",
+  tva: 20,
+  prixHT: 18.33,
+  volume: 70,
+  alcool: 45,
+  cat: "Spécialités"
+}, {
+  id: "cerisesKirsch34",
+  nom: "Cerises au Kirsch 34cl",
+  tva: 20,
+  prixHT: 8.34,
+  volume: 34,
+  alcool: 15,
+  cat: "Spécialités"
+}, {
+  id: "cerisesKirsch20",
+  nom: "Cerises au Kirsch 20cl",
+  tva: 20,
+  prixHT: 8.34,
+  volume: 20,
+  alcool: 15,
+  cat: "Spécialités"
+}, {
+  id: "valiseBois",
+  nom: "Valise bois",
+  tva: 20,
+  prixHT: 54.16,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "panierDecouverte20",
+  nom: "Panier découverte (20%)",
+  tva: 20,
+  prixHT: 16.25,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "panierDecouverte55",
+  nom: "Panier découverte (5,5%)",
+  tva: 5.5,
+  prixHT: 7.58,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "panierPlaisir20",
+  nom: "Panier plaisir (20%)",
+  tva: 20,
+  prixHT: 10.83,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "panierPlaisir55",
+  nom: "Panier plaisir (5,5%)",
+  tva: 5.5,
+  prixHT: 7.58,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "panierApero",
+  nom: "Panier Apéro",
+  tva: 20,
+  prixHT: 22.50,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "coffretCarton",
+  nom: "Coffret Carton 2 bouteilles",
+  tva: 20,
+  prixHT: 15.00,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "cagetteBois20",
+  nom: "Cagette en bois (20%)",
+  tva: 20,
+  prixHT: 19.17,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "cagetteBois55",
+  nom: "Cagette en bois (5,5%)",
+  tva: 5.5,
+  prixHT: 3.79,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "valisettTerroir20",
+  nom: "Valisette terroir (20%)",
+  tva: 20,
+  prixHT: 19.58,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "valisettTerroir55",
+  nom: "Valisette terroir (5,5%)",
+  tva: 5.5,
+  prixHT: 11.37,
+  volume: 0,
+  alcool: 0,
+  cat: "Coffrets"
+}, {
+  id: "coraPrestigeKirsch1",
+  nom: "Cora - Prestige Kirsch 50cl",
+  tva: 20,
+  prixHT: 12.29,
+  volume: 50,
+  alcool: 45,
+  cat: "Cora"
+}, {
+  id: "coraPrestigeKirsch2",
+  nom: "Cora - Prestige Kirsch - Droits",
+  tva: 20,
+  prixHT: 4.58,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraPrestigeKirsch3",
+  nom: "Cora - Prestige Kirsch - Vignette SS",
+  tva: 20,
+  prixHT: 1.47,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraPrestigeMirabelle1",
+  nom: "Cora - Prestige Mirabelle 50cl",
+  tva: 20,
+  prixHT: 12.12,
+  volume: 50,
+  alcool: 45,
+  cat: "Cora"
+}, {
+  id: "coraPrestigeMirabelle2",
+  nom: "Cora - Prestige Mirabelle - Droits",
+  tva: 20,
+  prixHT: 4.39,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraPrestigeMirabelle3",
+  nom: "Cora - Prestige Mirabelle - Vignette SS",
+  tva: 20,
+  prixHT: 1.41,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraPrestigePoire1",
+  nom: "Cora - Prestige Poire William 50cl",
+  tva: 20,
+  prixHT: 12.54,
+  volume: 50,
+  alcool: 45,
+  cat: "Cora"
+}, {
+  id: "coraPrestigePoire2",
+  nom: "Cora - Prestige Poire William - Droits",
+  tva: 20,
+  prixHT: 4.39,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraPrestigePoire3",
+  nom: "Cora - Prestige Poire William - Vignette SS",
+  tva: 20,
+  prixHT: 1.414,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraSymphonie1",
+  nom: "Cora - Symphonie 20cl",
+  tva: 20,
+  prixHT: 5.59,
+  volume: 20,
+  alcool: 40,
+  cat: "Cora"
+}, {
+  id: "coraSymphonie2",
+  nom: "Cora - Symphonie - Droits",
+  tva: 20,
+  prixHT: 1.83,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraSymphonie3",
+  nom: "Cora - Symphonie - Vignette SS",
+  tva: 20,
+  prixHT: 0.58,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraPerleNoire1",
+  nom: "Cora - Perle Noire 70cl",
+  tva: 20,
+  prixHT: 7.82,
+  volume: 70,
+  alcool: 18,
+  cat: "Cora"
+}, {
+  id: "coraPerleNoire2",
+  nom: "Cora - Perle Noire - Droits",
+  tva: 20,
+  prixHT: 2.18,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraCerises1",
+  nom: "Cora - Cerises au Kirsch 34cl",
+  tva: 20,
+  prixHT: 5.60,
+  volume: 34,
+  alcool: 15,
+  cat: "Cora"
+}, {
+  id: "coraCerises2",
+  nom: "Cora - Cerises au Kirsch - Droits",
+  tva: 20,
+  prixHT: 1.07,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraCagette20",
+  nom: "Cora - Cagette en bois (20%)",
+  tva: 20,
+  prixHT: 15.34,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraCagette55",
+  nom: "Cora - Cagette en bois (5,5%)",
+  tva: 5.5,
+  prixHT: 3.14,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "coraCagetteDroits",
+  nom: "Cora - Cagette en bois - Droits",
+  tva: 20,
+  prixHT: 3.41,
+  volume: 0,
+  alcool: 0,
+  cat: "Cora"
+}, {
+  id: "remise",
+  nom: "Remise exceptionnelle",
+  tva: 20,
+  prixHT: 0,
+  volume: 0,
+  alcool: 0,
+  cat: "Divers",
+  isRemise: true
+}];
+const fmt = n => n.toFixed(2).replace(".", ",") + " €";
+const fmtN = n => n.toFixed(2).replace(".", ",");
+const fmtTTC2 = n => {
+  const t = Math.floor(n * 100) / 100;
+  return t.toFixed(2).replace(".", ",") + " €";
+};
+const today = () => new Date().toISOString().split("T")[0];
+const formatDate = iso => {
+  const p = iso.split("-");
+  return p[2] + "/" + p[1] + "/" + p[0];
+};
+
+// load function provided by Firebase init above
+// save function provided by Firebase init above
+// subscribe function provided by Firebase init above
+
+// ─── PALETTE ────
+const C = {
+  bg: "#f5f0e6",
+  card: "#ffffff",
+  gold: "#b8860b",
+  goldLight: "#faf3e0",
+  goldDark: "#7a5a00",
+  text: "#2a2118",
+  muted: "#8a7d6b",
+  border: "#e0d5c0",
+  danger: "#d32f2f",
+  dangerLight: "#ffebee",
+  accent: "#2e7d32",
+  accentLight: "#e8f5e9",
+  blue: "#1565c0",
+  blueLight: "#e3f2fd",
+  purple: "#6a1b9a",
+  purpleLight: "#f3e5f5"
+};
+
+// ─── MODAL COMPONENT ────
+const Modal = ({
+  show,
+  title,
+  onClose,
+  children,
+  wide
+}) => {
+  if (!show) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#fff",
+      borderRadius: 16,
+      padding: "24px 28px",
+      width: wide ? 700 : 440,
+      maxWidth: "95vw",
+      maxHeight: "85vh",
+      overflow: "auto",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontSize: 22,
+      fontWeight: 700,
+      color: C.text,
+      margin: 0
+    }
+  }, title), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      border: "none",
+      background: "#f5f5f5",
+      fontSize: 20,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "\u2715")), children));
+};
+
+// ─── BIG BUTTON ────
+const BigBtn = ({
+  onClick,
+  icon,
+  label,
+  color = C.gold,
+  textColor = "#fff",
+  disabled,
+  style: sx
+}) => /*#__PURE__*/React.createElement("button", {
+  onClick: onClick,
+  disabled: disabled,
+  style: {
+    padding: "14px 24px",
+    borderRadius: 12,
+    border: "none",
+    cursor: disabled ? "default" : "pointer",
+    fontFamily: "inherit",
+    fontSize: 16,
+    fontWeight: 700,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    background: disabled ? "#ccc" : color,
+    color: disabled ? "#888" : textColor,
+    opacity: disabled ? 0.6 : 1,
+    transition: "all .15s",
+    minHeight: 52,
+    ...sx
+  }
+}, /*#__PURE__*/React.createElement("span", {
+  style: {
+    fontSize: 22
+  }
+}, icon), " ", label);
+
+// ═══════════════════════════════════════════════════════════════════════════
+function App() {
+  const [page, setPage] = useState("facture");
+  const [loading, setLoading] = useState(true);
+
+  // Data
+  const [clients, setClients] = useState(DEFAULT_CLIENTS);
+  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [savedInvoices, setSavedInvoices] = useState([]);
+  const [nextNum, setNextNum] = useState(1);
+  const [savedBLs, setSavedBLs] = useState([]);
+  const [nextBLNum, setNextBLNum] = useState(1);
+  const [savedAvoirs, setSavedAvoirs] = useState([]);
+  const [nextAvoirNum, setNextAvoirNum] = useState(1);
+
+  // Invoice state
+  const [dateFacture, setDateFacture] = useState(today());
+  const [clientId, setClientId] = useState("");
+  const [lignes, setLignes] = useState([]);
+  const [invoiceNum, setInvoiceNum] = useState("");
+
+  // UI state
+  const [catFilter, setCatFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [clientForm, setClientForm] = useState({
+    nom: "",
+    adresse: "",
+    cp: ""
+  });
+  const [productForm, setProductForm] = useState({
+    nom: "",
+    tva: "20",
+    prixHT: "",
+    volume: "",
+    alcool: "",
+    cat: "Eaux-de-vie",
+    composite: false,
+    prixHT20: "",
+    prixHT55: ""
+  });
+  const [msg, setMsg] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showCatRenameModal, setShowCatRenameModal] = useState(false);
+  const [catRenameForm, setCatRenameForm] = useState({
+    oldName: "",
+    newName: ""
+  });
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [customCats, setCustomCats] = useState([]);
+  const [movingProduct, setMovingProduct] = useState(null);
+  const [recapMonth, setRecapMonth] = useState(() => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  });
+  const [recapAlcoolMonth, setRecapAlcoolMonth] = useState(() => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  });
+  const [comptaStatus, setComptaStatus] = useState({});
+  const [showVenteDirecte, setShowVenteDirecte] = useState(false);
+  const [venteDirecteForm, setVenteDirecteForm] = useState({
+    prenom: "",
+    nom: "",
+    adresse: "",
+    cp: ""
+  });
+  const [venteDirecteClient, setVenteDirecteClient] = useState(null);
+  const printRef = useRef(null);
+
+  // Load + real-time sync
+  useEffect(() => {
+    (async () => {
+      const c = await load("gt-clients", null);
+      const p = await load("gt-products", null);
+      const inv = await load("gt-invoices", null);
+      const n = await load("gt-nextnum", null);
+      const cs = await load("gt-compta", null);
+      const cc = await load("gt-custom-cats", null);
+      // Initialize Firebase with defaults if empty
+      if (c === null) {
+        await save("gt-clients", DEFAULT_CLIENTS);
+        setClients(DEFAULT_CLIENTS);
+      } else {
+        setClients(c);
+      }
+      if (p === null) {
+        await save("gt-products", DEFAULT_PRODUCTS);
+        setProducts(DEFAULT_PRODUCTS);
+      } else {
+        setProducts(p);
+      }
+      if (inv === null) {
+        await save("gt-invoices", []);
+        setSavedInvoices([]);
+      } else {
+        setSavedInvoices(inv);
+      }
+      if (cs === null) {
+        await save("gt-compta", {});
+        setComptaStatus({});
+      } else {
+        setComptaStatus(cs);
+      }
+      if (cc === null) {
+        await save("gt-custom-cats", []);
+        setCustomCats([]);
+      } else {
+        setCustomCats(cc);
+      }
+      const num = n === null ? 1 : n;
+      if (n === null) await save("gt-nextnum", 1);
+      setNextNum(num);
+      const y = new Date().getFullYear();
+      setInvoiceNum("FAC-" + y + "-" + String(num).padStart(4, "0"));
+      // BL + Avoirs
+      const bls = await load("gt-bls", null);
+      const nbl = await load("gt-nextblnum", null);
+      const avs = await load("gt-avoirs", null);
+      const nav = await load("gt-nextavoirnum", null);
+      if (bls === null) {
+        await save("gt-bls", []);
+      } else {
+        setSavedBLs(bls);
+      }
+      if (nbl === null) {
+        await save("gt-nextblnum", 1);
+      } else {
+        setNextBLNum(nbl);
+      }
+      if (avs === null) {
+        await save("gt-avoirs", []);
+      } else {
+        setSavedAvoirs(avs);
+      }
+      if (nav === null) {
+        await save("gt-nextavoirnum", 1);
+      } else {
+        setNextAvoirNum(nav);
+      }
+      setLoading(false);
+    })();
+    // Real-time listeners
+    var unsubs = [subscribe("gt-products", function (d) {
+      if (d) setProducts(d);
+    }), subscribe("gt-clients", function (d) {
+      if (d) setClients(d);
+    }), subscribe("gt-invoices", function (d) {
+      if (d) setSavedInvoices(d);
+    }), subscribe("gt-compta", function (d) {
+      if (d) setComptaStatus(d);
+    }), subscribe("gt-custom-cats", function (d) {
+      if (d) setCustomCats(d);
+    }), subscribe("gt-nextnum", function (d) {
+      if (d) {
+        setNextNum(d);
+        var y = new Date().getFullYear();
+        setInvoiceNum("FAC-" + y + "-" + String(d).padStart(4, "0"));
+      }
+    }), subscribe("gt-bls", function (d) {
+      if (d) setSavedBLs(d);
+    }), subscribe("gt-nextblnum", function (d) {
+      if (d) setNextBLNum(d);
+    }), subscribe("gt-avoirs", function (d) {
+      if (d) setSavedAvoirs(d);
+    }), subscribe("gt-nextavoirnum", function (d) {
+      if (d) setNextAvoirNum(d);
+    })];
+    return function () {
+      unsubs.forEach(function (u) {
+        u();
+      });
+    };
+  }, []);
+  const client = clientId === "vd" ? venteDirecteClient : clients.find(c => c.id === Number(clientId));
+  const categories = useMemo(() => [...new Set([...products.map(p => p.cat), ...customCats])].filter(Boolean).sort(), [products, customCats]);
+  const showMsg = txt => {
+    setMsg(txt);
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  // ─── CLIENT OPS ────
+  const handleClientSelect = val => {
+    if (val === "vd") {
+      setVenteDirecteForm({
+        prenom: "",
+        nom: "",
+        adresse: "",
+        cp: ""
+      });
+      setShowVenteDirecte(true);
+    } else {
+      setVenteDirecteClient(null);
+      setClientId(val);
+    }
+  };
+  const confirmVenteDirecte = () => {
+    if (!venteDirecteForm.nom.trim()) return;
+    const fullNom = (venteDirecteForm.prenom.trim() ? venteDirecteForm.prenom.trim() + " " : "") + venteDirecteForm.nom.trim();
+    const vdClient = {
+      id: "vd_" + Date.now(),
+      nom: fullNom,
+      adresse: venteDirecteForm.adresse,
+      cp: venteDirecteForm.cp
+    };
+    setVenteDirecteClient(vdClient);
+    setClientId("vd");
+    setShowVenteDirecte(false);
+    showMsg("Client vente directe : " + fullNom);
+  };
+  const openNewClient = () => {
+    setEditingItem(null);
+    setClientForm({
+      nom: "",
+      adresse: "",
+      cp: ""
+    });
+    setShowClientModal(true);
+  };
+  const openEditClient = c => {
+    setEditingItem(c);
+    setClientForm({
+      nom: c.nom,
+      adresse: c.adresse,
+      cp: c.cp
+    });
+    setShowClientModal(true);
+  };
+  const saveClient = async () => {
+    if (!clientForm.nom.trim()) return;
+    let u;
+    if (editingItem) {
+      u = clients.map(c => c.id === editingItem.id ? {
+        ...c,
+        ...clientForm
+      } : c);
+    } else {
+      const nid = Math.max(0, ...clients.map(c => c.id)) + 1;
+      u = [...clients, {
+        id: nid,
+        ...clientForm
+      }];
+    }
+    setClients(u);
+    await save("gt-clients", u);
+    setShowClientModal(false);
+    showMsg(editingItem ? "Client modifié !" : "Client ajouté !");
+  };
+  const deleteClient = async id => {
+    const u = clients.filter(c => c.id !== id);
+    setClients(u);
+    await save("gt-clients", u);
+    if (Number(clientId) === id) setClientId("");
+    setConfirmDelete(null);
+    showMsg("Client supprimé");
+  };
+
+  // ─── PRODUCT OPS ────
+  const openNewProduct = () => {
+    setEditingItem(null);
+    setProductForm({
+      nom: "",
+      tva: "20",
+      prixHT: "",
+      volume: "",
+      alcool: "",
+      cat: categories[0] || "Eaux-de-vie",
+      composite: false,
+      prixHT20: "",
+      prixHT55: ""
+    });
+    setShowProductModal(true);
+  };
+  const openEditProduct = p => {
+    setEditingItem(p);
+    const isComp = !!p.composite;
+    setProductForm({
+      nom: p.nom,
+      tva: String(p.tva),
+      prixHT: isComp ? "" : String(p.prixHT).replace(".", ","),
+      volume: String(p.volume || ""),
+      alcool: String(p.alcool || ""),
+      cat: p.cat || "Divers",
+      composite: isComp,
+      prixHT20: isComp && p.parts ? String(p.parts.find(x => x.tva === 20)?.prixHT || "").replace(".", ",") : "",
+      prixHT55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixHT || "").replace(".", ",") : ""
+    });
+    setShowProductModal(true);
+  };
+  const duplicateProduct = p => {
+    setEditingItem(null);
+    const isComp = !!p.composite;
+    setProductForm({
+      nom: p.nom + " (copie)",
+      tva: String(p.tva),
+      prixHT: isComp ? "" : String(p.prixHT).replace(".", ","),
+      volume: String(p.volume || ""),
+      alcool: String(p.alcool || ""),
+      cat: p.cat || "Divers",
+      composite: isComp,
+      prixHT20: isComp && p.parts ? String(p.parts.find(x => x.tva === 20)?.prixHT || "").replace(".", ",") : "",
+      prixHT55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixHT || "").replace(".", ",") : ""
+    });
+    setShowProductModal(true);
+  };
+  const saveProduct = async () => {
+    if (!productForm.nom.trim()) return;
+    const vol = parseInt(productForm.volume) || 0;
+    const alc = parseFloat((productForm.alcool || "").replace(",", ".")) || 0;
+    let u;
+    if (productForm.composite) {
+      const p20 = parseFloat((productForm.prixHT20 || "").replace(",", ".")) || 0;
+      const p55 = parseFloat((productForm.prixHT55 || "").replace(",", ".")) || 0;
+      const totalHT = p20 + p55;
+      const prodData = {
+        nom: productForm.nom,
+        tva: 20,
+        prixHT: totalHT,
+        volume: vol,
+        alcool: alc,
+        cat: productForm.cat,
+        composite: true,
+        parts: [{
+          tva: 20,
+          prixHT: p20
+        }, {
+          tva: 5.5,
+          prixHT: p55
+        }]
+      };
+      if (editingItem) {
+        u = products.map(p => p.id === editingItem.id ? {
+          ...p,
+          ...prodData
+        } : p);
+      } else {
+        const nid = "prod_" + Date.now();
+        u = [...products, {
+          id: nid,
+          ...prodData
+        }];
+      }
+    } else {
+      const pHT = parseFloat((productForm.prixHT || "").replace(",", ".")) || 0;
+      const tva = parseFloat(productForm.tva) || 20;
+      if (editingItem) {
+        u = products.map(p => p.id === editingItem.id ? {
+          ...p,
+          nom: productForm.nom,
+          tva,
+          prixHT: pHT,
+          volume: vol,
+          alcool: alc,
+          cat: productForm.cat,
+          composite: false,
+          parts: null
+        } : p);
+        setLignes(prev => prev.map(l => l.id === editingItem.id ? {
+          ...l,
+          nom: productForm.nom,
+          tva,
+          prixHT: pHT,
+          volume: vol,
+          alcool: alc
+        } : l));
+      } else {
+        const nid = "prod_" + Date.now();
+        u = [...products, {
+          id: nid,
+          nom: productForm.nom,
+          tva,
+          prixHT: pHT,
+          volume: vol,
+          alcool: alc,
+          cat: productForm.cat
+        }];
+      }
+    }
+    setProducts(u);
+    await save("gt-products", u);
+    setShowProductModal(false);
+    showMsg(editingItem ? "Produit modifié !" : "Produit ajouté !");
+  };
+  const deleteProduct = async id => {
+    const u = products.filter(p => p.id !== id);
+    setProducts(u);
+    await save("gt-products", u);
+    setLignes(prev => prev.filter(l => l.id !== id));
+    setConfirmDelete(null);
+    showMsg("Produit supprimé");
+  };
+
+  // ─── CATEGORY OPS ────
+  const openRenameCat = catName => {
+    setCatRenameForm({
+      oldName: catName,
+      newName: catName
+    });
+    setShowCatRenameModal(true);
+  };
+  const renameCategory = async () => {
+    const {
+      oldName,
+      newName
+    } = catRenameForm;
+    if (!newName.trim() || newName === oldName) {
+      setShowCatRenameModal(false);
+      return;
+    }
+    const u = products.map(p => p.cat === oldName ? {
+      ...p,
+      cat: newName.trim()
+    } : p);
+    setProducts(u);
+    await save("gt-products", u);
+    const uc = customCats.map(c => c === oldName ? newName.trim() : c);
+    setCustomCats(uc);
+    await save("gt-custom-cats", uc);
+    if (catFilter === oldName) setCatFilter(newName.trim());
+    setShowCatRenameModal(false);
+    showMsg("Catégorie renommée !");
+  };
+  const createCategory = async () => {
+    if (!newCatName.trim()) return;
+    if (categories.includes(newCatName.trim())) {
+      showMsg("Cette catégorie existe déjà");
+      setShowNewCatInput(false);
+      setNewCatName("");
+      return;
+    }
+    const uc = [...customCats, newCatName.trim()];
+    setCustomCats(uc);
+    await save("gt-custom-cats", uc);
+    setShowNewCatInput(false);
+    setNewCatName("");
+    showMsg("Catégorie créée !");
+  };
+  const moveProductToCat = async (productId, newCat) => {
+    const u = products.map(p => p.id === productId ? {
+      ...p,
+      cat: newCat
+    } : p);
+    setProducts(u);
+    await save("gt-products", u);
+    setMovingProduct(null);
+    showMsg("Produit déplacé !");
+  };
+
+  // ─── LINE OPS ────
+  const addToInvoice = prod => {
+    if (prod.composite && prod.parts) {
+      // Composite product → add two lines
+      const id20 = prod.id + "_20";
+      const id55 = prod.id + "_55";
+      const p20 = prod.parts.find(x => x.tva === 20);
+      const p55 = prod.parts.find(x => x.tva === 5.5);
+      const exists20 = lignes.find(l => l.id === id20);
+      const exists55 = lignes.find(l => l.id === id55);
+      if (exists20 && exists55) {
+        setLignes(lignes.map(l => l.id === id20 || l.id === id55 ? {
+          ...l,
+          qte: l.qte + 1
+        } : l));
+      } else {
+        const newLines = [...lignes];
+        if (p20 && p20.prixHT > 0) newLines.push({
+          id: id20,
+          nom: prod.nom + " (20%)",
+          tva: 20,
+          prixHT: p20.prixHT,
+          volume: prod.volume,
+          alcool: prod.alcool,
+          qte: 1,
+          parentId: prod.id
+        });
+        if (p55 && p55.prixHT > 0) newLines.push({
+          id: id55,
+          nom: prod.nom + " (5,5%)",
+          tva: 5.5,
+          prixHT: p55.prixHT,
+          volume: 0,
+          alcool: 0,
+          qte: 1,
+          parentId: prod.id
+        });
+        setLignes(newLines);
+      }
+    } else {
+      const exists = lignes.find(l => l.id === prod.id);
+      if (exists) setLignes(lignes.map(l => l.id === prod.id ? {
+        ...l,
+        qte: l.qte + 1
+      } : l));else setLignes([...lignes, {
+        ...prod,
+        qte: 1
+      }]);
+    }
+  };
+  const changeQte = (id, delta) => {
+    setLignes(prev => {
+      const l = prev.find(x => x.id === id);
+      if (!l) return prev;
+      const nq = l.qte + delta;
+      if (nq <= 0) return prev.filter(x => x.id !== id);
+      return prev.map(x => x.id === id ? {
+        ...x,
+        qte: nq
+      } : x);
+    });
+  };
+  const setQte = (id, val) => {
+    const n = parseInt(val) || 0;
+    if (n <= 0) setLignes(lignes.filter(l => l.id !== id));else setLignes(lignes.map(l => l.id === id ? {
+      ...l,
+      qte: n
+    } : l));
+  };
+  const updatePrixRemise = (id, val) => {
+    const n = parseFloat(val.replace(",", ".")) || 0;
+    setLignes(lignes.map(l => l.id === id ? {
+      ...l,
+      prixHT: n
+    } : l));
+  };
+
+  // ─── SAVE INVOICE ────
+  const saveInvoice = async () => {
+    if (!client || lignes.length === 0) return;
+    const inv = {
+      id: Date.now(),
+      num: invoiceNum,
+      date: dateFacture,
+      client,
+      lignes: [...lignes],
+      totals: {
+        ...totals
+      }
+    };
+    const u = [inv, ...savedInvoices];
+    setSavedInvoices(u);
+    await save("gt-invoices", u);
+    const nn = nextNum + 1;
+    setNextNum(nn);
+    await save("gt-nextnum", nn);
+    const y = new Date().getFullYear();
+    setInvoiceNum("FAC-" + y + "-" + String(nn).padStart(4, "0"));
+    setLignes([]);
+    setClientId("");
+    setVenteDirecteClient(null);
+    setDateFacture(today());
+    showMsg("Facture " + inv.num + " enregistrée !");
+  };
+  const loadInvoice = inv => {
+    if (String(inv.client.id).startsWith("vd_")) {
+      setVenteDirecteClient(inv.client);
+      setClientId("vd");
+    } else {
+      setVenteDirecteClient(null);
+      setClientId(String(inv.client.id));
+    }
+    setDateFacture(inv.date);
+    setLignes(inv.lignes);
+    setInvoiceNum(inv.num);
+    setShowHistoryModal(false);
+    setPage("facture");
+  };
+  const deleteInvoice = async id => {
+    const u = savedInvoices.filter(i => i.id !== id);
+    setSavedInvoices(u);
+    await save("gt-invoices", u);
+    setConfirmDelete(null);
+    showMsg("Facture supprimée");
+  };
+
+  // ─── COMPTA STATUS ────
+  const toggleCompta = async invoiceId => {
+    const updated = {
+      ...comptaStatus,
+      [invoiceId]: !comptaStatus[invoiceId]
+    };
+    setComptaStatus(updated);
+    await save("gt-compta", updated);
+  };
+  const unsavedComptaCount = savedInvoices.filter(inv => !comptaStatus[inv.id]).length;
+
+  // ─── BON DE LIVRAISON ────
+  const saveBL = async () => {
+    if (!client || lignes.length === 0) return;
+    const y = new Date().getFullYear();
+    const blNum = "BL-" + y + "-" + String(nextBLNum).padStart(4, "0");
+    const bl = {
+      id: Date.now(),
+      num: blNum,
+      date: dateFacture,
+      client: client,
+      lignes: [...lignes],
+      totals: {
+        ...totals
+      },
+      invoiceNum: invoiceNum
+    };
+    const u = [bl, ...savedBLs];
+    setSavedBLs(u);
+    await save("gt-bls", u);
+    const nn = nextBLNum + 1;
+    setNextBLNum(nn);
+    await save("gt-nextblnum", nn);
+    showMsg("Bon de livraison " + blNum + " enregistré !");
+    return bl;
+  };
+  const deleteBL = async id => {
+    const u = savedBLs.filter(b => b.id !== id);
+    setSavedBLs(u);
+    await save("gt-bls", u);
+    setConfirmDelete(null);
+    showMsg("BL supprimé");
+  };
+
+  // ─── AVOIR ────
+  const saveAvoir = async (sourceInvoice, motif, lignesAvoir) => {
+    const y = new Date().getFullYear();
+    const avoirNum = "AV-" + y + "-" + String(nextAvoirNum).padStart(4, "0");
+    let ht20 = 0,
+      ht55 = 0;
+    lignesAvoir.forEach(l => {
+      const ht = l.prixHT * l.qte;
+      if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
+    });
+    const tva20 = ht20 * 0.20,
+      tva55 = ht55 * 0.055;
+    const av = {
+      id: Date.now(),
+      num: avoirNum,
+      date: today(),
+      motif: motif || "",
+      client: sourceInvoice.client,
+      lignes: lignesAvoir,
+      totals: {
+        ht20,
+        ht55,
+        tva20,
+        tva55,
+        totalHT: ht20 + ht55,
+        totalTTC: ht20 + ht55 + tva20 + tva55
+      },
+      sourceInvoice: sourceInvoice.num
+    };
+    const u = [av, ...savedAvoirs];
+    setSavedAvoirs(u);
+    await save("gt-avoirs", u);
+    const nn = nextAvoirNum + 1;
+    setNextAvoirNum(nn);
+    await save("gt-nextavoirnum", nn);
+    showMsg("Avoir " + avoirNum + " enregistré !");
+    return av;
+  };
+  const deleteAvoir = async id => {
+    const u = savedAvoirs.filter(a => a.id !== id);
+    setSavedAvoirs(u);
+    await save("gt-avoirs", u);
+    setConfirmDelete(null);
+    showMsg("Avoir supprimé");
+  };
+
+  // ─── CALCULATIONS ────
+  const totals = useMemo(() => {
+    let ht20 = 0,
+      ht55 = 0,
+      vol = 0,
+      alc = 0;
+    lignes.forEach(l => {
+      const ht = l.prixHT * l.qte;
+      if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
+      if (l.volume > 0) {
+        const vL = l.volume / 100 * l.qte;
+        vol += vL;
+        if (l.alcool > 0) alc += vL * (l.alcool / 100);
+      }
+    });
+    const tva20 = ht20 * 0.20,
+      tva55 = ht55 * 0.055;
+    return {
+      ht20,
+      ht55,
+      tva20,
+      tva55,
+      totalHT: ht20 + ht55,
+      totalTTC: ht20 + ht55 + tva20 + tva55,
+      vol,
+      alc
+    };
+  }, [lignes]);
+  const filteredProducts = useMemo(() => {
+    let p = catFilter === "all" ? products : products.filter(x => x.cat === catFilter);
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      p = p.filter(x => x.nom.toLowerCase().includes(s));
+    }
+    return p;
+  }, [products, catFilter, search]);
+
+  // ─── PRINT ────
+  const printCSS = '@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap");@page{size:A4 portrait;margin:14mm 18mm 12mm 18mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"Source Sans 3",Arial,sans-serif;color:#1a1a1a;font-size:11px;}.page{width:100%;min-height:258mm;display:flex;flex-direction:column;}.brand{font-family:"Playfair Display",Georgia,serif;}.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:14px;border-bottom:2px solid #c8963e;}.hdr-left{display:flex;gap:14px;align-items:flex-start;}.hdr-left img{width:85px;height:auto;}.em{font-size:10.5px;line-height:1.6;color:#333;}.em .name{font-family:"Playfair Display",Georgia,serif;font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:2px;}.em .detail{color:#555;}.cl{text-align:right;font-size:10.5px;line-height:1.6;background:#faf6ed;border-radius:6px;padding:12px 16px;min-width:210px;border-left:3px solid #c8963e;}.cl .name{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px;}.cl .addr{color:#555;}.meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}.dt{background:#2a2118;color:#fff;padding:6px 16px;font-size:11px;font-weight:600;border-radius:4px;}.num{font-size:13px;font-weight:700;color:#c8963e;letter-spacing:0.5px;}table.inv{width:100%;border-collapse:collapse;font-size:10.5px;border-radius:4px;overflow:hidden;}table.inv th{background:#2a2118;color:#fff;padding:7px 8px;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;}table.inv th:first-child{text-align:left;}table.inv th:not(:first-child){text-align:center;}table.inv th:nth-child(5),table.inv th:nth-child(6),table.inv th:nth-child(7){text-align:right;}table.inv td{padding:5px 8px;border-bottom:1px solid #e8e0d0;}table.inv td.gold{background:#fdf6e3;}table.inv td.right{text-align:right;}table.inv td.center{text-align:center;}table.inv td.bold{font-weight:700;}table.inv td.product{font-weight:600;color:#2a2118;}table.inv tr:nth-child(even) td{background:#fefcf7;}table.inv tr:nth-child(even) td.gold{background:#f8f0d8;}.spacer{flex:1;min-height:12px;}.bottom{margin-top:auto;}.totals{width:auto;margin-left:auto;border-collapse:collapse;font-size:11px;margin-top:8px;}.totals td{padding:5px 14px;border:1px solid #d4c9b0;}.totals .label{color:#555;font-weight:600;}.totals .value{text-align:right;font-weight:700;color:#1a1a1a;}.totals .grand-label{background:#2a2118;color:#fff;font-weight:700;font-size:12px;}.totals .grand-value{background:#2a2118;color:#f5d98e;font-weight:700;font-size:13px;text-align:right;}.legal{margin-top:16px;padding-top:8px;border-top:1px solid #d4c9b0;font-size:7.5px;color:#888;line-height:1.4;font-style:italic;}@media print{.page{min-height:auto;}}';
+  const handlePrint = () => {
+    const el = printRef.current;
+    if (!el) return;
+    const w = window.open("", "_blank");
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"><title>' + invoiceNum + '</title><style>' + printCSS + '</style></head><body>');
+    w.document.write(el.innerHTML);
+    w.document.write("</body></html>");
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  };
+
+  // ─── CSV ────
+  const exportCSV = () => {
+    if (!lignes.length) return;
+    const s = ";",
+      h = ["Produit", "Vol (cl)", "Alcool (%)", "TVA (%)", "Qté", "PU HT", "PU TTC", "Total HT"].join(s);
+    const r = lignes.map(l => [l.nom, l.volume || "", l.alcool || "", l.tva, l.qte, fmtN(l.prixHT), (Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100).toFixed(2).replace(".", ","), fmtN(l.prixHT * l.qte)].join(s));
+    r.push("");
+    r.push(["", "", "", "", "", "", "Grand Total TTC", fmtN(totals.totalTTC)].join(s));
+    const blob = new Blob(["\uFEFF" + [h, ...r].join("\n")], {
+      type: "text/csv;charset=utf-8;"
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = invoiceNum + ".csv";
+    a.click();
+  };
+
+  // ─── STYLES ────
+  const input = {
+    width: "100%",
+    padding: "14px 16px",
+    borderRadius: 10,
+    border: "2px solid " + C.border,
+    fontFamily: "inherit",
+    fontSize: 17,
+    outline: "none",
+    background: "#fff"
+  };
+  const select = {
+    ...input,
+    cursor: "pointer",
+    appearance: "auto"
+  };
+  const label = {
+    fontSize: 14,
+    fontWeight: 700,
+    color: C.muted,
+    marginBottom: 6,
+    display: "block",
+    textTransform: "uppercase",
+    letterSpacing: 0.5
+  };
+
+  // NOTE: loading check moved to render section (must not return before hooks)
+
+  // Auto-print when entering apercu page
+  useEffect(() => {
+    if (page === "apercu" && !loading) {
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [page, loading]);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONFIRM DELETE
+  // ═══════════════════════════════════════════════════════════════════════
+  const ConfirmModal = () => {
+    if (!confirmDelete) return null;
+    return /*#__PURE__*/React.createElement(Modal, {
+      show: true,
+      title: "\xCAtes-vous s\xFBr ?",
+      onClose: () => setConfirmDelete(null)
+    }, /*#__PURE__*/React.createElement("p", {
+      style: {
+        fontSize: 18,
+        marginBottom: 20,
+        lineHeight: 1.5
+      }
+    }, "Voulez-vous vraiment supprimer ", /*#__PURE__*/React.createElement("strong", null, confirmDelete.label), " ?", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.danger
+      }
+    }, "Cette action est d\xE9finitive.")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        justifyContent: "flex-end"
+      }
+    }, /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: () => setConfirmDelete(null),
+      icon: "\u21A9",
+      label: "Annuler",
+      color: "#eee",
+      textColor: C.text
+    }), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: confirmDelete.action,
+      icon: "\uD83D\uDDD1\uFE0F",
+      label: "Supprimer",
+      color: C.danger
+    })));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FACTURE PAGE
+  // ═══════════════════════════════════════════════════════════════════════
+  const FacturePage = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "16px 20px",
+      display: "flex",
+      gap: 18
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: "0 0 380px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + (client ? C.accent : C.border),
+      overflow: "hidden"
+    }
+  }, client ?
+  /*#__PURE__*/
+  /* COLLAPSED / LOCKED */
+  React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      background: C.accentLight,
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22
+    }
+  }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 17,
+      fontWeight: 700,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, clientId === "vd" && "🏠 ", client.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.muted
+    }
+  }, invoiceNum + " · " + formatDate(dateFacture))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setClientId(""),
+    style: {
+      padding: "8px 14px",
+      borderRadius: 8,
+      border: "2px solid " + C.border,
+      background: "#fff",
+      fontSize: 14,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      color: C.text
+    }
+  }, "Modifier")) :
+  /*#__PURE__*/
+  /* EXPANDED */
+  React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "14px 18px",
+      background: C.blueLight,
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 28
+    }
+  }, "1\uFE0F\u20E3"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: C.blue
+    }
+  }, "Choisir le client")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 16,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: clientId,
+    onChange: e => handleClientSelect(e.target.value),
+    style: {
+      ...select,
+      fontSize: 18,
+      fontWeight: 600
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 Choisir un client \u2014"), /*#__PURE__*/React.createElement("option", {
+    value: "vd",
+    style: {
+      fontWeight: 700,
+      color: "#1565c0"
+    }
+  }, "\uD83C\uDFE0 Vente directe (particulier)"), /*#__PURE__*/React.createElement("option", {
+    disabled: true
+  }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"), clients.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nom))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "N\xB0 Facture"), /*#__PURE__*/React.createElement("input", {
+    value: invoiceNum,
+    onChange: e => setInvoiceNum(e.target.value),
+    style: {
+      ...input,
+      fontWeight: 700,
+      color: C.gold
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Date"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: dateFacture,
+    onChange: e => setDateFacture(e.target.value),
+    style: input
+  })))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + C.border,
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      minHeight: 0,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "14px 18px",
+      background: C.accentLight,
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 28
+    }
+  }, "2\uFE0F\u20E3"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: C.accent
+    }
+  }, "Ajouter des produits")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "10px 14px",
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      flexDirection: "column",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    placeholder: "\uD83D\uDD0D Rechercher un produit...",
+    value: search,
+    onChange: e => setSearch(e.target.value),
+    style: {
+      ...input,
+      fontSize: 16
+    }
+  }), /*#__PURE__*/React.createElement("select", {
+    value: catFilter,
+    onChange: e => setCatFilter(e.target.value),
+    style: {
+      ...select,
+      fontSize: 15
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "all"
+  }, "\uD83D\uDCCB Toutes les cat\xE9gories"), categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c,
+    value: c
+  }, c)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflow: "auto",
+      padding: 8
+    }
+  }, filteredProducts.map(p => {
+    const inCart = p.composite ? lignes.find(l => l.id === p.id + "_20") : lignes.find(l => l.id === p.id);
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.id,
+      style: {
+        padding: "12px 14px",
+        borderRadius: 10,
+        marginBottom: 4,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        background: inCart ? C.goldLight : "#fff",
+        border: "2px solid " + (inCart ? C.gold : "transparent"),
+        transition: "all .15s"
+      },
+      onClick: () => addToInvoice(p)
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, p.nom, p.composite && /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 6,
+        fontSize: 10,
+        background: "#e8d5f5",
+        color: C.purple,
+        borderRadius: 4,
+        padding: "1px 6px",
+        fontWeight: 700,
+        verticalAlign: "middle"
+      }
+    }, "TVA mixte")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: C.muted,
+        marginTop: 2
+      }
+    }, p.volume > 0 && p.volume + "cl", p.alcool > 0 && " · " + p.alcool + "°", p.composite && p.parts ? /*#__PURE__*/React.createElement(React.Fragment, null, " · ", /*#__PURE__*/React.createElement("strong", null, fmt(p.parts.find(x => x.tva === 20)?.prixHT || 0)), " (20%) + ", /*#__PURE__*/React.createElement("strong", null, fmt(p.parts.find(x => x.tva === 5.5)?.prixHT || 0)), " (5,5%)") : /*#__PURE__*/React.createElement(React.Fragment, null, " · ", /*#__PURE__*/React.createElement("strong", null, fmt(p.prixHT)), " HT"))), inCart && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: C.gold,
+        color: "#fff",
+        borderRadius: 10,
+        padding: "4px 14px",
+        fontSize: 18,
+        fontWeight: 800,
+        minWidth: 40,
+        textAlign: "center"
+      }
+    }, inCart.qte), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 26,
+        color: C.accent,
+        fontWeight: 700
+      }
+    }, "+"));
+  }), filteredProducts.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20,
+      textAlign: "center",
+      color: C.muted,
+      fontSize: 16
+    }
+  }, "Aucun produit trouv\xE9")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      gap: 14,
+      position: "sticky",
+      top: 16,
+      alignSelf: "flex-start",
+      maxHeight: "calc(100vh - 100px)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + C.border,
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "14px 18px",
+      background: C.goldLight,
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 28
+    }
+  }, "3\uFE0F\u20E3"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: C.goldDark
+    }
+  }, "Votre facture (", lignes.length, " produit", lignes.length > 1 ? "s" : "", ")")), lignes.length > 0 && /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setLignes([]),
+    icon: "\uD83D\uDDD1\uFE0F",
+    label: "Tout vider",
+    color: C.dangerLight,
+    textColor: C.danger,
+    style: {
+      padding: "8px 14px",
+      fontSize: 14
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflow: "auto"
+    }
+  }, lignes.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 40,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 48,
+      marginBottom: 12
+    }
+  }, "\uD83D\uDC48"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      color: C.muted
+    }
+  }, "Cliquez sur un produit \xE0 gauche", /*#__PURE__*/React.createElement("br", null), "pour l'ajouter \xE0 la facture")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 8
+    }
+  }, lignes.map((l, i) => {
+    const totalHT = l.prixHT * l.qte;
+    const prixTTC = l.prixHT * (1 + l.tva / 100);
+    return /*#__PURE__*/React.createElement("div", {
+      key: l.id,
+      style: {
+        padding: "12px 14px",
+        borderRadius: 10,
+        marginBottom: 6,
+        background: i % 2 === 0 ? "#fff" : C.goldLight,
+        border: "1px solid " + C.border,
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 600
+      }
+    }, l.nom), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: C.muted,
+        marginTop: 2
+      }
+    }, l.volume > 0 && l.volume + "cl", " ", l.alcool > 0 && "· " + l.alcool + "°", " \xB7 TVA ", l.tva, "%", " · ", l.isRemise ? /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: l.prixHT.toFixed(2).replace(".", ","),
+      onChange: e => updatePrixRemise(l.id, e.target.value),
+      style: {
+        width: 80,
+        padding: "2px 6px",
+        borderRadius: 6,
+        border: "1px solid " + C.border,
+        fontSize: 14,
+        fontWeight: 600,
+        textAlign: "center"
+      }
+    }) : fmt(l.prixHT), " HT")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 0
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => changeQte(l.id, -1),
+      style: {
+        width: 44,
+        height: 44,
+        borderRadius: "10px 0 0 10px",
+        border: "2px solid " + C.border,
+        borderRight: "none",
+        background: C.dangerLight,
+        fontSize: 22,
+        fontWeight: 700,
+        cursor: "pointer",
+        color: C.danger
+      }
+    }, "\u2212"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: l.qte,
+      onChange: e => setQte(l.id, e.target.value),
+      style: {
+        width: 52,
+        height: 44,
+        border: "2px solid " + C.border,
+        textAlign: "center",
+        fontSize: 18,
+        fontWeight: 700,
+        fontFamily: "inherit",
+        outline: "none"
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: () => changeQte(l.id, 1),
+      style: {
+        width: 44,
+        height: 44,
+        borderRadius: "0 10px 10px 0",
+        border: "2px solid " + C.border,
+        borderLeft: "none",
+        background: C.accentLight,
+        fontSize: 22,
+        fontWeight: 700,
+        cursor: "pointer",
+        color: C.accent
+      }
+    }, "+")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right",
+        minWidth: 90
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.goldDark
+      }
+    }, fmt(totalHT)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted
+      }
+    }, "TTC: ", fmtTTC2(totalHT * (1 + l.tva / 100)))), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setLignes(lignes.filter(x => x.id !== l.id)),
+      style: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        border: "none",
+        background: C.dangerLight,
+        color: C.danger,
+        fontSize: 20,
+        cursor: "pointer",
+        flexShrink: 0
+      }
+    }, "\u2715"));
+  })))), lignes.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + C.border,
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 8
+    }
+  }, [["Total HT (TVA 20%)", fmt(totals.ht20)], ["TVA 20%", fmt(totals.tva20)], ["Total HT (TVA 5,5%)", fmt(totals.ht55)], ["TVA 5,5%", fmt(totals.tva55)]].map(([lb, vl], i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 16
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted
+    }
+  }, lb), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, vl))), totals.vol > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "2px solid " + C.border,
+      paddingTop: 8,
+      marginTop: 4,
+      display: "flex",
+      flexDirection: "column",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 15
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.accent,
+      fontWeight: 600
+    }
+  }, "Volume total"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: C.accent
+    }
+  }, fmtN(totals.vol), " L")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 15
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.purple,
+      fontWeight: 600
+    }
+  }, "Alcool pur"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: C.purple
+    }
+  }, fmtN(totals.alc), " L")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.gold,
+      borderRadius: 14,
+      padding: 20,
+      color: "#fff",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 16
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      opacity: 0.8
+    }
+  }, "Total HT"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, fmt(totals.totalHT))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 2,
+      background: "rgba(255,255,255,0.3)"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 26
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, "TOTAL TTC"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 800,
+      fontSize: 28
+    }
+  }, fmtTTC2(totals.totalTTC))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      display: "flex",
+      gap: 10,
+      justifyContent: "flex-end",
+      flexWrap: "wrap",
+      alignItems: "center"
+    }
+  }, msg && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.accent,
+      fontWeight: 700,
+      fontSize: 16,
+      marginRight: "auto"
+    }
+  }, msg), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: exportCSV,
+    icon: "\uD83D\uDCCA",
+    label: "Export CSV",
+    color: "#eee",
+    textColor: C.text
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setPage("apercu"),
+    icon: "\uD83D\uDDA8\uFE0F",
+    label: "Imprimer",
+    color: C.blue
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: saveInvoice,
+    icon: "\uD83D\uDCBE",
+    label: "Enregistrer",
+    color: C.accent,
+    disabled: !client
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: async () => {
+      await saveInvoice();
+      const bl = await saveBL();
+      if (bl) {
+        setPage("bl");
+      }
+    },
+    icon: "\uD83D\uDCE6",
+    label: "Enregistrer + BL",
+    color: C.goldDark,
+    disabled: !client
+  })))));
+
+  // ═══════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════
+  // PREVIEW PAGE — A4 Portrait layout (matching original)
+  const farmLogoIMG = 'data:image/png;base64,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';
+
+  // ═══════════════════════════════════════════════════════════
+
+  const ApercuPage = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 24,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: handlePrint,
+    icon: "\uD83D\uDDA8\uFE0F",
+    label: "Imprimer / PDF",
+    color: C.accent
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: exportCSV,
+    icon: "\uD83D\uDCCA",
+    label: "Export CSV",
+    color: "#eee",
+    textColor: C.text
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setPage("facture"),
+    icon: "\u21A9",
+    label: "Retour",
+    color: C.blue
+  })), /*#__PURE__*/React.createElement("div", {
+    ref: printRef,
+    style: {
+      background: "#fff",
+      width: 794,
+      minHeight: 1123,
+      padding: "28px 36px",
+      borderRadius: 4,
+      boxShadow: "0 2px 20px rgba(0,0,0,0.12)",
+      fontFamily: "'Source Sans 3', Arial, sans-serif",
+      fontSize: 11,
+      lineHeight: 1.5,
+      display: "flex",
+      flexDirection: "column"
+    }
+  }, /*#__PURE__*/React.createElement("link", {
+    href: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap",
+    rel: "stylesheet"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "hdr",
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 14,
+      paddingBottom: 14,
+      borderBottom: "2px solid #c8963e"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "hdr-left",
+    style: {
+      display: "flex",
+      gap: 14,
+      alignItems: "flex-start"
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: farmLogoIMG,
+    style: {
+      width: 85,
+      height: "auto"
+    },
+    alt: "Logo"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "em",
+    style: {
+      fontSize: 10.5,
+      lineHeight: 1.6,
+      color: "#333"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "name brand",
+    style: {
+      fontFamily: "'Playfair Display', Georgia, serif",
+      fontSize: 16,
+      fontWeight: 700,
+      color: "#1a1a1a",
+      marginBottom: 2
+    }
+  }, EMETTEUR.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555"
+    }
+  }, EMETTEUR.adresse), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555"
+    }
+  }, "R.C.S. : " + EMETTEUR.rcs), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555"
+    }
+  }, "No de Gestion : " + EMETTEUR.gestion), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555"
+    }
+  }, "Banque : " + EMETTEUR.banque))), /*#__PURE__*/React.createElement("div", {
+    className: "cl",
+    style: {
+      textAlign: "right",
+      fontSize: 10.5,
+      lineHeight: 1.6,
+      background: "#faf6ed",
+      borderRadius: 6,
+      padding: "12px 16px",
+      minWidth: 210,
+      borderLeft: "3px solid #c8963e"
+    }
+  }, client ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "name",
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#1a1a1a",
+      marginBottom: 4
+    }
+  }, client.nom), client.adresse && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555"
+    }
+  }, client.adresse), client.cp && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555"
+    }
+  }, client.cp)) : /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#999"
+    }
+  }, "—"))), /*#__PURE__*/React.createElement("div", {
+    className: "meta",
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "dt",
+    style: {
+      background: "#2a2118",
+      color: "#fff",
+      padding: "6px 16px",
+      fontSize: 11,
+      fontWeight: 600,
+      borderRadius: 4
+    }
+  }, "Facture émise le " + formatDate(dateFacture)), /*#__PURE__*/React.createElement("div", {
+    className: "num",
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#c8963e",
+      letterSpacing: 0.5
+    }
+  }, invoiceNum)), /*#__PURE__*/React.createElement("table", {
+    className: "inv",
+    style: {
+      width: "100%",
+      borderCollapse: "collapse",
+      fontSize: 10.5,
+      borderRadius: 4,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Intitulés", "Volume", "TVA", "Quantité", "Prix unitaire (HT)", "Prix unitaire (TTC)", "Total (HT)"].map((h, i) => /*#__PURE__*/React.createElement("th", {
+    key: i,
+    style: {
+      background: "#2a2118",
+      color: "#fff",
+      padding: "7px 8px",
+      fontWeight: 600,
+      fontSize: 9,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      textAlign: i === 0 ? "left" : i >= 4 ? "right" : "center"
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, lignes.map((l, i) => {
+    const bg = i % 2 === 0 ? "#fff" : "#fefcf7";
+    const bgGold = i % 2 === 0 ? "#fdf6e3" : "#f8f0d8";
+    return /*#__PURE__*/React.createElement("tr", {
+      key: l.id
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bg,
+        fontWeight: 600,
+        color: "#2a2118"
+      }
+    }, l.nom), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bgGold,
+        textAlign: "center"
+      }
+    }, l.volume > 0 ? l.volume : ""), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bgGold,
+        textAlign: "center"
+      }
+    }, l.tva), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bgGold,
+        textAlign: "center",
+        fontWeight: 700
+      }
+    }, l.qte), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bg,
+        textAlign: "right"
+      }
+    }, fmt(l.prixHT)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bg,
+        textAlign: "right",
+        fontWeight: 600
+      }
+    }, fmtTTC2(l.prixHT * (1 + l.tva / 100))), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bg,
+        textAlign: "right",
+        fontWeight: 700
+      }
+    }, fmt(l.prixHT * l.qte)));
+  }), Array.from({
+    length: Math.max(0, 25 - lignes.length)
+  }).map((_, i) => {
+    const idx = lignes.length + i;
+    const bg = idx % 2 === 0 ? "#fff" : "#fefcf7";
+    const bgGold = idx % 2 === 0 ? "#fdf6e3" : "#f8f0d8";
+    return /*#__PURE__*/React.createElement("tr", {
+      key: "e" + i
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 8px",
+        borderBottom: "1px solid #e8e0d0",
+        background: bg,
+        height: 22
+      }
+    }, " "), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderBottom: "1px solid #e8e0d0",
+        background: bgGold
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderBottom: "1px solid #e8e0d0",
+        background: bgGold
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderBottom: "1px solid #e8e0d0",
+        background: bgGold
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderBottom: "1px solid #e8e0d0",
+        background: bg
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderBottom: "1px solid #e8e0d0",
+        background: bg
+      }
+    }, " "), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderBottom: "1px solid #e8e0d0",
+        background: bg
+      }
+    }, " "));
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "spacer",
+    style: {
+      flex: 1,
+      minHeight: 12
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "bottom",
+    style: {
+      marginTop: "auto"
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "totals",
+    style: {
+      width: "auto",
+      marginLeft: "auto",
+      borderCollapse: "collapse",
+      fontSize: 11,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    className: "label",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      color: "#555",
+      fontWeight: 600
+    }
+  }, "TVA 5,5%"), /*#__PURE__*/React.createElement("td", {
+    className: "value",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      textAlign: "right",
+      fontWeight: 700
+    }
+  }, totals.tva55 > 0 ? fmt(totals.tva55) : "- €"), /*#__PURE__*/React.createElement("td", {
+    className: "label",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      color: "#555",
+      fontWeight: 600
+    }
+  }, "Total HT (TVA 5,5%)"), /*#__PURE__*/React.createElement("td", {
+    className: "value",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      textAlign: "right",
+      fontWeight: 700
+    }
+  }, totals.ht55 > 0 ? fmt(totals.ht55) : "- €")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    className: "label",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      color: "#555",
+      fontWeight: 600
+    }
+  }, "TVA 20%"), /*#__PURE__*/React.createElement("td", {
+    className: "value",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      textAlign: "right",
+      fontWeight: 700
+    }
+  }, fmt(totals.tva20)), /*#__PURE__*/React.createElement("td", {
+    className: "label",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      color: "#555",
+      fontWeight: 600
+    }
+  }, "Total HT (TVA 20%)"), /*#__PURE__*/React.createElement("td", {
+    className: "value",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      textAlign: "right",
+      fontWeight: 700
+    }
+  }, fmt(totals.ht20))), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: 2,
+    style: {
+      border: "none"
+    }
+  }), /*#__PURE__*/React.createElement("td", {
+    className: "label",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      fontWeight: 700
+    }
+  }, "Grand total (HT)"), /*#__PURE__*/React.createElement("td", {
+    className: "value",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      textAlign: "right",
+      fontWeight: 700
+    }
+  }, fmt(totals.totalHT))), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: 2,
+    style: {
+      border: "none"
+    }
+  }), /*#__PURE__*/React.createElement("td", {
+    className: "grand-label",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      background: "#2a2118",
+      color: "#fff",
+      fontWeight: 700,
+      fontSize: 12
+    }
+  }, "Grand total (TTC)"), /*#__PURE__*/React.createElement("td", {
+    className: "grand-value",
+    style: {
+      padding: "5px 14px",
+      border: "1px solid #d4c9b0",
+      background: "#2a2118",
+      color: "#f5d98e",
+      fontWeight: 700,
+      fontSize: 13,
+      textAlign: "right"
+    }
+  }, fmtTTC2(totals.totalTTC))))), /*#__PURE__*/React.createElement("div", {
+    className: "legal",
+    style: {
+      marginTop: 16,
+      paddingTop: 8,
+      borderTop: "1px solid #d4c9b0",
+      fontSize: 7.5,
+      color: "#888",
+      lineHeight: 1.4,
+      fontStyle: "italic"
+    }
+  }, "Nous nous réservons la propriété des matériels et fournitures jusqu'au paiement complet du prix de l'acheteur. Notre réserve de propriété porte aussi bien sur les marchandises que sur leur prix si elles ont déjà été revendues. Loi N° 80.335 du 12 Mai 1980. Nos factures sont payables comptant sans escompte sauf accord préalable, intérêt de retard 3 fois le taux légal."))));
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // GESTION PAGE (Clients + Products)
+  // ═══════════════════════════════════════════════════════════════════════
+  const GestionPage = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "20px 24px",
+      display: "flex",
+      gap: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + C.border,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "16px 20px",
+      background: C.blueLight,
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700,
+      color: C.blue
+    }
+  }, "\uD83D\uDC65 Mes clients"), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: openNewClient,
+    icon: "\u2795",
+    label: "Nouveau client",
+    color: C.blue,
+    style: {
+      fontSize: 14,
+      padding: "10px 16px"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflow: "auto",
+      maxHeight: "65vh",
+      padding: 10
+    }
+  }, clients.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.id,
+    style: {
+      padding: "14px 16px",
+      borderRadius: 10,
+      border: "1px solid " + C.border,
+      marginBottom: 6,
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 17,
+      fontWeight: 700
+    }
+  }, c.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.muted
+    }
+  }, c.adresse, c.adresse && " — ", c.cp)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => openEditClient(c),
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 10,
+      border: "2px solid " + C.border,
+      background: "#fff",
+      fontSize: 18,
+      cursor: "pointer"
+    }
+  }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setConfirmDelete({
+      label: c.nom,
+      action: () => deleteClient(c.id)
+    }),
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 10,
+      border: "2px solid " + C.dangerLight,
+      background: C.dangerLight,
+      fontSize: 18,
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDDD1\uFE0F"))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1.5,
+      display: "flex",
+      flexDirection: "column",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + C.border,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "14px 18px",
+      background: C.purpleLight,
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700,
+      color: C.purple
+    }
+  }, "\uD83D\uDCC1 Mes cat\xE9gories"), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setShowNewCatInput(true),
+    icon: "\u2795",
+    label: "Nouvelle cat\xE9gorie",
+    color: C.purple,
+    style: {
+      fontSize: 14,
+      padding: "10px 16px"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 10,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8
+    }
+  }, showNewCatInput && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "6px 10px",
+      borderRadius: 10,
+      border: "2px solid " + C.purple,
+      background: "#fff",
+      width: "100%",
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: newCatName,
+    onChange: e => setNewCatName(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") createCategory();
+    },
+    style: {
+      flex: 1,
+      padding: "10px 14px",
+      borderRadius: 8,
+      border: "2px solid " + C.border,
+      fontSize: 16,
+      fontFamily: "inherit",
+      outline: "none"
+    },
+    autoFocus: true
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: createCategory,
+    style: {
+      padding: "10px 18px",
+      borderRadius: 8,
+      border: "none",
+      background: C.purple,
+      color: "#fff",
+      fontSize: 15,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "Cr\xE9er"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setShowNewCatInput(false);
+      setNewCatName("");
+    },
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      border: "none",
+      background: "#eee",
+      fontSize: 16,
+      cursor: "pointer"
+    }
+  }, "\u2715")), categories.map(cat => {
+    const count = products.filter(p => p.cat === cat).length;
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "8px 14px",
+        borderRadius: 10,
+        border: "2px solid " + C.border,
+        background: "#fff"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 600
+      }
+    }, cat), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: C.muted
+      }
+    }, "(", count, ")"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => openRenameCat(cat),
+      title: "Renommer",
+      style: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        border: "1px solid " + C.border,
+        background: C.purpleLight,
+        fontSize: 14,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }
+    }, "\u270F\uFE0F"));
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: 14,
+      border: "2px solid " + C.border,
+      overflow: "hidden",
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "16px 20px",
+      background: C.accentLight,
+      borderBottom: "2px solid " + C.border,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700,
+      color: C.accent
+    }
+  }, "\uD83C\uDF77 Mes produits"), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: openNewProduct,
+    icon: "\u2795",
+    label: "Nouveau produit",
+    color: C.accent,
+    style: {
+      fontSize: 14,
+      padding: "10px 16px"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "10px 14px",
+      borderBottom: "2px solid " + C.border
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: catFilter,
+    onChange: e => setCatFilter(e.target.value),
+    style: {
+      ...select,
+      fontSize: 16
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "all"
+  }, "Toutes les cat\xE9gories"), categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c,
+    value: c
+  }, c)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflow: "auto",
+      maxHeight: "45vh",
+      padding: 10
+    }
+  }, filteredProducts.map(p => /*#__PURE__*/React.createElement("div", {
+    key: p.id,
+    style: {
+      padding: "12px 14px",
+      borderRadius: 10,
+      border: "1px solid " + C.border,
+      marginBottom: 4,
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 600,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, p.nom, p.composite && /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 6,
+      fontSize: 10,
+      background: "#e8d5f5",
+      color: C.purple,
+      borderRadius: 4,
+      padding: "1px 6px",
+      fontWeight: 700,
+      verticalAlign: "middle"
+    }
+  }, "TVA mixte")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.muted
+    }
+  }, p.volume > 0 && p.volume + "cl", " ", p.alcool > 0 && "· " + p.alcool + "°", p.composite && p.parts ? /*#__PURE__*/React.createElement(React.Fragment, null, " · ", /*#__PURE__*/React.createElement("strong", null, fmt(p.parts.find(x => x.tva === 20)?.prixHT || 0)), " (20%) + ", /*#__PURE__*/React.createElement("strong", null, fmt(p.parts.find(x => x.tva === 5.5)?.prixHT || 0)), " (5,5%)") : /*#__PURE__*/React.createElement(React.Fragment, null, " · TVA " + p.tva + "% · ", /*#__PURE__*/React.createElement("strong", null, fmt(p.prixHT)), " HT"))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#fff",
+      background: C.muted,
+      borderRadius: 6,
+      padding: "2px 8px",
+      fontWeight: 600
+    }
+  }, p.cat), movingProduct === p.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    onChange: e => {
+      if (e.target.value) moveProductToCat(p.id, e.target.value);
+    },
+    defaultValue: "",
+    style: {
+      padding: "6px 10px",
+      borderRadius: 8,
+      border: "2px solid " + C.purple,
+      fontSize: 14,
+      fontFamily: "inherit",
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "",
+    disabled: true
+  }, "D\xE9placer vers..."), categories.filter(c => c !== p.cat).map(c => /*#__PURE__*/React.createElement("option", {
+    key: c,
+    value: c
+  }, c))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMovingProduct(null),
+    style: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      border: "none",
+      background: "#eee",
+      fontSize: 14,
+      cursor: "pointer"
+    }
+  }, "\u2715")) : /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMovingProduct(p.id),
+    title: "D\xE9placer",
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      border: "2px solid " + C.purpleLight,
+      background: C.purpleLight,
+      fontSize: 16,
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDCE6"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => duplicateProduct(p),
+    title: "Dupliquer",
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      border: "2px solid " + C.blueLight,
+      background: C.blueLight,
+      fontSize: 16,
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => openEditProduct(p),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      border: "2px solid " + C.border,
+      background: "#fff",
+      fontSize: 16,
+      cursor: "pointer"
+    }
+  }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setConfirmDelete({
+      label: p.nom,
+      action: () => deleteProduct(p.id)
+    }),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      border: "2px solid " + C.dangerLight,
+      background: C.dangerLight,
+      fontSize: 16,
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDDD1\uFE0F")))))));
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RECAP PAGE — Monthly summary
+  // ═══════════════════════════════════════════════════════════════════════
+  const MOIS_NOMS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+  const recapData = useMemo(() => {
+    if (!recapMonth) return {
+      produits: [],
+      factures: [],
+      totalVol: 0,
+      totalAlc: 0,
+      totalHT: 0,
+      totalTTC: 0
+    };
+    const [ry, rm] = recapMonth.split("-").map(Number);
+    // Filter invoices for selected month
+    const monthInvoices = savedInvoices.filter(inv => {
+      const [iy, im] = inv.date.split("-").map(Number);
+      return iy === ry && im === rm;
+    });
+    // Aggregate products
+    const map = {};
+    monthInvoices.forEach(inv => {
+      inv.lignes.forEach(l => {
+        if (!map[l.id]) {
+          map[l.id] = {
+            id: l.id,
+            nom: l.nom,
+            volume: l.volume || 0,
+            alcool: l.alcool || 0,
+            tva: l.tva,
+            prixHT: l.prixHT,
+            qte: 0,
+            totalHT: 0
+          };
+        }
+        map[l.id].qte += l.qte;
+        map[l.id].totalHT += l.prixHT * l.qte;
+      });
+    });
+    const produits = Object.values(map).sort((a, b) => a.nom.localeCompare(b.nom));
+    let totalVol = 0,
+      totalAlc = 0,
+      totalHT = 0,
+      totalTTC = 0;
+    produits.forEach(p => {
+      const vL = p.volume / 100 * p.qte;
+      p.volTotal = p.volume > 0 ? vL : 0;
+      p.alcPur = p.volume > 0 && p.alcool > 0 ? vL * (p.alcool / 100) : 0;
+      totalVol += p.volTotal;
+      totalAlc += p.alcPur;
+      totalHT += p.totalHT;
+      p.totalTTC = Math.floor(p.totalHT * (1 + p.tva / 100) * 100) / 100;
+      totalTTC += p.totalTTC;
+    });
+    return {
+      produits,
+      factures: monthInvoices,
+      totalVol,
+      totalAlc,
+      totalHT,
+      totalTTC
+    };
+  }, [recapMonth, savedInvoices]);
+
+  // Available months from saved invoices
+  const availableMonths = useMemo(() => {
+    const set = new Set();
+    savedInvoices.forEach(inv => {
+      set.add(inv.date.substring(0, 7));
+    });
+    // Also add current month
+    const d = new Date();
+    set.add(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
+    return [...set].sort().reverse();
+  }, [savedInvoices]);
+  const recapPrintRef = useRef(null);
+  const handlePrintRecap = () => {
+    const el = recapPrintRef.current;
+    if (!el) return;
+    const w = window.open("", "_blank");
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Récap mensuel</title><style>@page{size:A4 landscape;margin:12mm 15mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#222;font-size:10px;}table{width:100%;border-collapse:collapse;font-size:9.5px;margin-top:8px;}th{background:#b8860b;color:#fff;padding:5px 6px;font-weight:700;font-size:8.5px;text-transform:uppercase;}td{padding:4px 6px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#faf6ee;}.right{text-align:right;}.bold{font-weight:700;}.title{font-size:16px;font-weight:700;margin-bottom:4px;}.subtitle{font-size:11px;color:#666;margin-bottom:12px;}.totrow td{background:#f8f0dc !important;font-weight:700;font-size:10px;border-top:2px solid #b8860b;}@media print{body{padding:0;}}</style></head><body>');
+    w.document.write(el.innerHTML);
+    w.document.write("</body></html>");
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  };
+  const exportRecapCSV = () => {
+    if (!recapData.produits.length) return;
+    const [ry, rm] = recapMonth.split("-").map(Number);
+    const moisNom = MOIS_NOMS[rm - 1] + " " + ry;
+    const sep = ";";
+    const h = ["Produit", "Quantité vendue", "Volume unitaire (cl)", "Alcool (%)", "Volume total (L)", "Alcool pur (L)", "Total HT", "Total TTC"].join(sep);
+    const rows = recapData.produits.map(p => [p.nom, p.qte, p.volume || "", p.alcool || "", fmtN(p.volTotal), fmtN(p.alcPur), fmtN(p.totalHT), fmtN(p.totalTTC)].join(sep));
+    rows.push("");
+    rows.push(["TOTAL", "", "", "", fmtN(recapData.totalVol), fmtN(recapData.totalAlc), fmtN(recapData.totalHT), fmtN(recapData.totalTTC)].join(sep));
+    const csv = "\uFEFF" + [h, ...rows].join("\n");
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;"
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "recap_" + moisNom.replace(" ", "_") + ".csv";
+    a.click();
+  };
+  const RecapPage = () => {
+    const [ry, rm] = recapMonth.split("-").map(Number);
+    const moisNom = MOIS_NOMS[rm - 1] + " " + ry;
+    const rd = recapData;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        marginBottom: 16,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22,
+        fontWeight: 700
+      }
+    }, "\uD83D\uDCCA Suivi des ventes")), /*#__PURE__*/React.createElement("select", {
+      value: recapMonth,
+      onChange: e => setRecapMonth(e.target.value),
+      style: {
+        ...select,
+        width: "auto",
+        fontSize: 18,
+        fontWeight: 700,
+        padding: "12px 18px",
+        color: C.gold
+      }
+    }, availableMonths.map(m => {
+      const [y, mo] = m.split("-").map(Number);
+      return /*#__PURE__*/React.createElement("option", {
+        key: m,
+        value: m
+      }, MOIS_NOMS[mo - 1] + " " + y);
+    })), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: handlePrintRecap,
+      icon: "\uD83D\uDDA8\uFE0F",
+      label: "Imprimer",
+      color: C.accent,
+      style: {
+        padding: "10px 18px"
+      }
+    }), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: exportRecapCSV,
+      icon: "\uD83D\uDCCA",
+      label: "Export CSV",
+      color: "#eee",
+      textColor: C.text,
+      style: {
+        padding: "10px 18px"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(5, 1fr)",
+        gap: 12,
+        marginBottom: 16
+      }
+    }, [{
+      label: "Factures",
+      value: rd.factures.length,
+      icon: "📄",
+      color: C.blue,
+      bg: C.blueLight
+    }, {
+      label: "Total HT",
+      value: fmt(rd.totalHT),
+      icon: "💰",
+      color: C.goldDark,
+      bg: C.goldLight
+    }, {
+      label: "Total TTC",
+      value: fmtTTC2(rd.totalTTC),
+      icon: "💶",
+      color: C.accent,
+      bg: C.accentLight
+    }, {
+      label: "Volume total",
+      value: fmtN(rd.totalVol) + " L",
+      icon: "🍾",
+      color: C.blue,
+      bg: C.blueLight
+    }, {
+      label: "Alcool pur",
+      value: fmtN(rd.totalAlc) + " L",
+      icon: "🧪",
+      color: C.purple,
+      bg: C.purpleLight
+    }].map((card, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        background: card.bg,
+        borderRadius: 14,
+        padding: "18px 20px",
+        border: "2px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: C.muted,
+        fontWeight: 600,
+        marginBottom: 6
+      }
+    }, card.icon, " ", card.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 26,
+        fontWeight: 800,
+        color: card.color
+      }
+    }, card.value)))), /*#__PURE__*/React.createElement("div", {
+      ref: recapPrintRef,
+      style: {
+        background: C.card,
+        borderRadius: 14,
+        border: "2px solid " + C.border,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "14px 18px",
+        background: C.goldLight,
+        borderBottom: "2px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "title",
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.goldDark
+      }
+    }, "Suivi des ventes — " + moisNom), /*#__PURE__*/React.createElement("div", {
+      className: "subtitle",
+      style: {
+        fontSize: 13,
+        color: C.muted
+      }
+    }, rd.factures.length + " facture(s) · " + rd.produits.length + " produit(s) différent(s)")), rd.produits.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 40,
+        textAlign: "center",
+        fontSize: 18,
+        color: C.muted
+      }
+    }, "Aucune facture enregistr\xE9e pour ", moisNom) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflow: "auto"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: 14
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        background: "#b8860b"
+      }
+    }, ["Produit", "Qté vendue", "Vol. unitaire", "Alcool", "Vol. total", "Alcool pur vendu", "Total HT", "Total TTC"].map((h, i) => /*#__PURE__*/React.createElement("th", {
+      key: i,
+      style: {
+        padding: "10px 12px",
+        color: "#fff",
+        fontWeight: 700,
+        fontSize: 12,
+        textTransform: "uppercase",
+        textAlign: i === 0 ? "left" : "right"
+      }
+    }, h)))), /*#__PURE__*/React.createElement("tbody", null, rd.produits.map((p, i) => /*#__PURE__*/React.createElement("tr", {
+      key: p.id,
+      style: {
+        background: i % 2 === 0 ? "#fff" : "#faf6ee"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        fontWeight: 600
+      }
+    }, p.nom), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontSize: 16,
+        fontWeight: 700
+      }
+    }, p.qte), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        color: C.muted
+      }
+    }, p.volume > 0 ? p.volume + " cl" : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        color: C.muted
+      }
+    }, p.alcool > 0 ? p.alcool + "%" : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontWeight: 600,
+        color: C.accent
+      }
+    }, p.volTotal > 0 ? fmtN(p.volTotal) + " L" : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontWeight: 700,
+        color: C.purple
+      }
+    }, p.alcPur > 0 ? fmtN(p.alcPur) + " L" : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontWeight: 700
+      }
+    }, fmt(p.totalHT)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontWeight: 700,
+        color: C.goldDark
+      }
+    }, fmtTTC2(p.totalTTC)))), /*#__PURE__*/React.createElement("tr", {
+      className: "totrow",
+      style: {
+        background: C.goldLight
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b",
+        fontWeight: 800,
+        fontSize: 15
+      }
+    }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b",
+        textAlign: "right",
+        fontWeight: 800,
+        fontSize: 16
+      }
+    }, rd.produits.reduce((s, p) => s + p.qte, 0)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b"
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b"
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b",
+        textAlign: "right",
+        fontWeight: 800,
+        color: C.accent,
+        fontSize: 15
+      }
+    }, fmtN(rd.totalVol) + " L"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b",
+        textAlign: "right",
+        fontWeight: 800,
+        color: C.purple,
+        fontSize: 15
+      }
+    }, fmtN(rd.totalAlc) + " L"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b",
+        textAlign: "right",
+        fontWeight: 800,
+        fontSize: 15
+      }
+    }, fmt(rd.totalHT)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid #b8860b",
+        textAlign: "right",
+        fontWeight: 800,
+        fontSize: 15,
+        color: C.goldDark
+      }
+    }, fmtTTC2(rd.totalTTC))))))), rd.factures.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.card,
+        borderRadius: 14,
+        border: "2px solid " + C.border,
+        overflow: "hidden",
+        marginTop: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "14px 18px",
+        background: C.blueLight,
+        borderBottom: "2px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 17,
+        fontWeight: 700,
+        color: C.blue
+      }
+    }, "📄 Factures du mois (" + rd.factures.length + ")")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 10
+      }
+    }, rd.factures.map(inv => /*#__PURE__*/React.createElement("div", {
+      key: inv.id,
+      style: {
+        padding: "10px 14px",
+        borderRadius: 10,
+        border: "1px solid " + C.border,
+        marginBottom: 4,
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700,
+        fontSize: 15
+      }
+    }, inv.num), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.muted,
+        marginLeft: 12
+      }
+    }, formatDate(inv.date)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.muted,
+        marginLeft: 12
+      }
+    }, inv.client.nom)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700,
+        fontSize: 16,
+        color: C.gold
+      }
+    }, fmt(inv.totals.totalTTC)), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: () => loadInvoice(inv),
+      icon: "\uD83D\uDCC2",
+      label: "Ouvrir",
+      color: C.blue,
+      style: {
+        fontSize: 13,
+        padding: "6px 12px",
+        minHeight: 36
+      }
+    }))))));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RECAP ALCOOL PAGE — Monthly alcohol tracking (formula TBD)
+  // ═══════════════════════════════════════════════════════════════════════
+  const recapAlcoolData = useMemo(() => {
+    if (!recapAlcoolMonth) return {
+      produits: [],
+      factures: [],
+      totalVol: 0,
+      totalAlc: 0
+    };
+    const [ry, rm] = recapAlcoolMonth.split("-").map(Number);
+    const monthInvoices = savedInvoices.filter(inv => {
+      const [iy, im] = inv.date.split("-").map(Number);
+      return iy === ry && im === rm;
+    });
+    const map = {};
+    monthInvoices.forEach(inv => {
+      inv.lignes.forEach(l => {
+        if (!map[l.id]) {
+          map[l.id] = {
+            id: l.id,
+            nom: l.nom,
+            volume: l.volume || 0,
+            alcool: l.alcool || 0,
+            tva: l.tva,
+            qte: 0
+          };
+        }
+        map[l.id].qte += l.qte;
+      });
+    });
+    const produits = Object.values(map).filter(p => p.volume > 0 && p.alcool > 0).sort((a, b) => a.nom.localeCompare(b.nom));
+    let totalVol = 0,
+      totalAlc = 0;
+    produits.forEach(p => {
+      const vL = p.volume / 100 * p.qte;
+      p.volTotal = vL;
+      p.alcPur = vL * (p.alcool / 100);
+      // Placeholder: formula column — to be defined later by Eric
+      p.formulaResult = null;
+      totalVol += p.volTotal;
+      totalAlc += p.alcPur;
+    });
+    return {
+      produits,
+      factures: monthInvoices,
+      totalVol,
+      totalAlc
+    };
+  }, [recapAlcoolMonth, savedInvoices]);
+  const recapAlcoolPrintRef = useRef(null);
+  const handlePrintRecapAlcool = () => {
+    const el = recapAlcoolPrintRef.current;
+    if (!el) return;
+    const w = window.open("", "_blank");
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Suivi alcool</title><style>@page{size:A4 landscape;margin:12mm 15mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#222;font-size:10px;}table{width:100%;border-collapse:collapse;font-size:9.5px;margin-top:8px;}th{background:#6a1b9a;color:#fff;padding:5px 6px;font-weight:700;font-size:8.5px;text-transform:uppercase;}td{padding:4px 6px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#faf6ee;}.right{text-align:right;}.bold{font-weight:700;}.title{font-size:16px;font-weight:700;margin-bottom:4px;}.subtitle{font-size:11px;color:#666;margin-bottom:12px;}.totrow td{background:#f3e5f5 !important;font-weight:700;font-size:10px;border-top:2px solid #6a1b9a;}@media print{body{padding:0;}}</style></head><body>');
+    w.document.write(el.innerHTML);
+    w.document.write("</body></html>");
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  };
+  const exportRecapAlcoolCSV = () => {
+    if (!recapAlcoolData.produits.length) return;
+    const [ry, rm] = recapAlcoolMonth.split("-").map(Number);
+    const moisNom = MOIS_NOMS[rm - 1] + " " + ry;
+    const sep = ";";
+    const h = ["Produit", "Quantité vendue", "Volume unitaire (cl)", "Alcool (%)", "Volume total (L)", "Alcool pur (L)", "Formule (à définir)"].join(sep);
+    const rows = recapAlcoolData.produits.map(p => [p.nom, p.qte, p.volume, p.alcool, fmtN(p.volTotal), fmtN(p.alcPur), "—"].join(sep));
+    rows.push("");
+    rows.push(["TOTAL", "", "", "", fmtN(recapAlcoolData.totalVol), fmtN(recapAlcoolData.totalAlc), ""].join(sep));
+    const csv = "\uFEFF" + [h, ...rows].join("\n");
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;"
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "suivi_alcool_" + moisNom.replace(" ", "_") + ".csv";
+    a.click();
+  };
+  const RecapAlcoolPage = () => {
+    const [ry, rm] = recapAlcoolMonth.split("-").map(Number);
+    const moisNom = MOIS_NOMS[rm - 1] + " " + ry;
+    const rd = recapAlcoolData;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        marginBottom: 16,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22,
+        fontWeight: 700
+      }
+    }, "\uD83E\uDDEA Suivi alcool"), /*#__PURE__*/React.createElement("select", {
+      value: recapAlcoolMonth,
+      onChange: e => setRecapAlcoolMonth(e.target.value),
+      style: {
+        ...select,
+        width: "auto",
+        fontSize: 18,
+        fontWeight: 700,
+        padding: "12px 18px",
+        color: C.purple
+      }
+    }, availableMonths.map(m => {
+      const [y, mo] = m.split("-").map(Number);
+      return /*#__PURE__*/React.createElement("option", {
+        key: m,
+        value: m
+      }, MOIS_NOMS[mo - 1] + " " + y);
+    })), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: handlePrintRecapAlcool,
+      icon: "\uD83D\uDDA8\uFE0F",
+      label: "Imprimer",
+      color: C.purple,
+      style: {
+        padding: "10px 18px"
+      }
+    }), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: exportRecapAlcoolCSV,
+      icon: "\uD83D\uDCCA",
+      label: "Export CSV",
+      color: "#eee",
+      textColor: C.text,
+      style: {
+        padding: "10px 18px"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: 12,
+        marginBottom: 16
+      }
+    }, [{
+      label: "Factures",
+      value: rd.factures.length,
+      icon: "📄",
+      color: C.blue,
+      bg: C.blueLight
+    }, {
+      label: "Volume total vendu",
+      value: fmtN(rd.totalVol) + " L",
+      icon: "🍾",
+      color: C.accent,
+      bg: C.accentLight
+    }, {
+      label: "Alcool pur total",
+      value: fmtN(rd.totalAlc) + " L",
+      icon: "🧪",
+      color: C.purple,
+      bg: C.purpleLight
+    }].map((card, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        background: card.bg,
+        borderRadius: 14,
+        padding: "18px 20px",
+        border: "2px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: C.muted,
+        fontWeight: 600,
+        marginBottom: 6
+      }
+    }, card.icon + " " + card.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 26,
+        fontWeight: 800,
+        color: card.color
+      }
+    }, card.value)))), /*#__PURE__*/React.createElement("div", {
+      ref: recapAlcoolPrintRef,
+      style: {
+        background: C.card,
+        borderRadius: 14,
+        border: "2px solid " + C.border,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "14px 18px",
+        background: C.purpleLight,
+        borderBottom: "2px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "title",
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.purple
+      }
+    }, "Suivi alcool — " + moisNom), /*#__PURE__*/React.createElement("div", {
+      className: "subtitle",
+      style: {
+        fontSize: 13,
+        color: C.muted
+      }
+    }, rd.produits.length + " produit(s) alcoolisé(s) vendus")), rd.produits.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 40,
+        textAlign: "center",
+        fontSize: 18,
+        color: C.muted
+      }
+    }, "Aucune vente d'alcool pour " + moisNom) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflow: "auto"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: 14
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        background: C.purple
+      }
+    }, ["Produit", "Qté vendue", "Vol. unitaire", "Alcool", "Vol. total vendu", "Alcool pur vendu", "Formule (à définir)"].map((h, i) => /*#__PURE__*/React.createElement("th", {
+      key: i,
+      style: {
+        padding: "10px 12px",
+        color: "#fff",
+        fontWeight: 700,
+        fontSize: 12,
+        textTransform: "uppercase",
+        textAlign: i === 0 ? "left" : "right"
+      }
+    }, h)))), /*#__PURE__*/React.createElement("tbody", null, rd.produits.map((p, i) => /*#__PURE__*/React.createElement("tr", {
+      key: p.id,
+      style: {
+        background: i % 2 === 0 ? "#fff" : "#f8f0ff"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        fontWeight: 600
+      }
+    }, p.nom), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontSize: 16,
+        fontWeight: 700
+      }
+    }, p.qte), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        color: C.muted
+      }
+    }, p.volume + " cl"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        color: C.muted
+      }
+    }, p.alcool + "%"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontWeight: 600,
+        color: C.accent
+      }
+    }, fmtN(p.volTotal) + " L"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontWeight: 700,
+        color: C.purple
+      }
+    }, fmtN(p.alcPur) + " L"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid #e5dbc8",
+        textAlign: "right",
+        fontStyle: "italic",
+        color: "#aaa"
+      }
+    }, "—"))), /*#__PURE__*/React.createElement("tr", {
+      className: "totrow",
+      style: {
+        background: C.purpleLight
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple,
+        fontWeight: 800,
+        fontSize: 15
+      }
+    }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple,
+        textAlign: "right",
+        fontWeight: 800,
+        fontSize: 16
+      }
+    }, rd.produits.reduce((s, p) => s + p.qte, 0)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple
+      }
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple,
+        textAlign: "right",
+        fontWeight: 800,
+        color: C.accent,
+        fontSize: 15
+      }
+    }, fmtN(rd.totalVol) + " L"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple,
+        textAlign: "right",
+        fontWeight: 800,
+        color: C.purple,
+        fontSize: 15
+      }
+    }, fmtN(rd.totalAlc) + " L"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        borderTop: "2px solid " + C.purple,
+        textAlign: "right",
+        fontStyle: "italic",
+        color: "#aaa"
+      }
+    }, "—")))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 16,
+        padding: "16px 20px",
+        background: "#fff8e1",
+        borderRadius: 12,
+        border: "2px solid #ffe082",
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 28
+      }
+    }, "\u26A0\uFE0F"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 700,
+        color: "#f57f17"
+      }
+    }, "Colonne \"Formule\" en attente"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: "#8a7d6b"
+      }
+    }, "La dernière colonne sera calculée selon une formule spécifique par produit, à fournir ultérieurement."))));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // COMPTA PAGE — Suivi saisie comptable
+  // ═══════════════════════════════════════════════════════════════════════
+  const ComptaPage = () => {
+    const nonSaisies = savedInvoices.filter(inv => !comptaStatus[inv.id]);
+    const saisies = savedInvoices.filter(inv => comptaStatus[inv.id]);
+    const InvoiceRow = ({
+      inv
+    }) => {
+      const done = !!comptaStatus[inv.id];
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "14px 18px",
+          borderRadius: 12,
+          marginBottom: 6,
+          border: "2px solid " + (done ? C.accent : "#ffcdd2"),
+          background: done ? C.accentLight : "#fff",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          transition: "all .2s"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        onClick: () => toggleCompta(inv.id),
+        style: {
+          width: 64,
+          height: 34,
+          borderRadius: 17,
+          cursor: "pointer",
+          background: done ? C.accent : "#ccc",
+          position: "relative",
+          transition: "background .25s",
+          flexShrink: 0,
+          boxShadow: "inset 0 1px 3px rgba(0,0,0,0.15)"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          background: "#fff",
+          position: "absolute",
+          top: 3,
+          left: done ? 33 : 3,
+          transition: "left .25s",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.2)"
+        }
+      })), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          minWidth: 0
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 17,
+          fontWeight: 700
+        }
+      }, inv.num), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          color: C.muted
+        }
+      }, formatDate(inv.date)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          color: C.muted
+        }
+      }, "\u2014"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 15,
+          fontWeight: 600
+        }
+      }, inv.client.nom)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 13,
+          color: C.muted,
+          marginTop: 2
+        }
+      }, inv.lignes.length + " produit" + (inv.lignes.length > 1 ? "s" : ""), " · TTC : ", /*#__PURE__*/React.createElement("strong", {
+        style: {
+          color: C.gold
+        }
+      }, fmt(inv.totals.totalTTC)))), /*#__PURE__*/React.createElement("div", {
+        onClick: () => toggleCompta(inv.id),
+        style: {
+          padding: "8px 18px",
+          borderRadius: 10,
+          fontSize: 15,
+          fontWeight: 700,
+          cursor: "pointer",
+          background: done ? C.accent : C.danger,
+          color: "#fff",
+          minWidth: 120,
+          textAlign: "center",
+          transition: "all .2s"
+        }
+      }, done ? "✅ Saisi" : "À saisir"), /*#__PURE__*/React.createElement(BigBtn, {
+        onClick: () => loadInvoice(inv),
+        icon: "\uD83D\uDCC2",
+        label: "Ouvrir",
+        color: C.blue,
+        style: {
+          fontSize: 13,
+          padding: "8px 14px",
+          minHeight: 40
+        }
+      }), /*#__PURE__*/React.createElement("button", {
+        onClick: () => setConfirmDelete({
+          label: inv.num + " (" + inv.client.nom + ")",
+          action: () => deleteInvoice(inv.id)
+        }),
+        style: {
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          border: "none",
+          background: C.dangerLight,
+          color: C.danger,
+          fontSize: 20,
+          cursor: "pointer",
+          flexShrink: 0
+        }
+      }, "\uD83D\uDDD1\uFE0F"));
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22,
+        fontWeight: 700
+      }
+    }, "\u2705 Suivi saisie comptable"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginLeft: "auto",
+        display: "flex",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "10px 18px",
+        borderRadius: 10,
+        background: nonSaisies.length > 0 ? "#ffebee" : C.accentLight,
+        border: "2px solid " + (nonSaisies.length > 0 ? "#ffcdd2" : C.accent)
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: 600,
+        color: nonSaisies.length > 0 ? C.danger : C.accent
+      }
+    }, nonSaisies.length > 0 ? "⚠️ " + nonSaisies.length + " facture" + (nonSaisies.length > 1 ? "s" : "") + " à saisir" : "✅ Tout est à jour !")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "10px 18px",
+        borderRadius: 10,
+        background: C.accentLight,
+        border: "2px solid " + C.accent
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: 600,
+        color: C.accent
+      }
+    }, "✅ " + saisies.length + " saisie" + (saisies.length > 1 ? "s" : ""))))), nonSaisies.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.card,
+        borderRadius: 14,
+        border: "2px solid #ffcdd2",
+        overflow: "hidden",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "14px 18px",
+        background: "#ffebee",
+        borderBottom: "2px solid #ffcdd2",
+        display: "flex",
+        alignItems: "center",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22
+      }
+    }, "\uD83D\uDD34"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.danger
+      }
+    }, "Factures à saisir (" + nonSaisies.length + ")"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        color: C.muted,
+        marginLeft: 8
+      }
+    }, "Glissez le toggle ou cliquez pour valider")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 10
+      }
+    }, nonSaisies.map(inv => /*#__PURE__*/React.createElement(InvoiceRow, {
+      key: inv.id,
+      inv: inv
+    })))), saisies.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.card,
+        borderRadius: 14,
+        border: "2px solid " + C.border,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "14px 18px",
+        background: C.accentLight,
+        borderBottom: "2px solid " + C.border,
+        display: "flex",
+        alignItems: "center",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22
+      }
+    }, "\uD83D\uDFE2"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.accent
+      }
+    }, "Factures saisies (" + saisies.length + ")")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 10
+      }
+    }, saisies.map(inv => /*#__PURE__*/React.createElement(InvoiceRow, {
+      key: inv.id,
+      inv: inv
+    })))), savedInvoices.length === 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 40,
+        textAlign: "center",
+        fontSize: 18,
+        color: C.muted
+      }
+    }, "Aucune facture enregistr\xE9e pour le moment"));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // BON DE LIVRAISON PAGE
+  // ═══════════════════════════════════════════════════════════════════════
+  const BLPage = () => {
+    const [showBLForm, setShowBLForm] = useState(false);
+    const [avoirInv, setAvoirInv] = useState(null);
+    const printBL = bl => {
+      const w = window.open("", "_blank");
+      const rows = bl.lignes.map((l, i) => '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#f5f5f5') + '"><td style="padding:5px 8px;border:1px solid #ddd;font-weight:600">' + l.nom + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:700">' + l.qte + '</td></tr>').join("");
+      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + bl.num + '</title><style>@page{size:A4;margin:15mm;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#2a2118;color:#fff;padding:6px 8px;font-size:10px;text-transform:uppercase;}td{padding:5px 8px;border:1px solid #ddd;}</style></head><body>');
+      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '</div><div style="text-align:right"><strong style="font-size:14px">' + bl.client.nom + '</strong><br>' + (bl.client.adresse || '') + (bl.client.cp ? '<br>' + bl.client.cp : '') + '</div></div>');
+      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:14px"><div style="background:#2a2118;color:#fff;padding:8px 20px;border-radius:4px;font-weight:700;font-size:14px">BON DE LIVRAISON</div><div style="font-size:13px"><strong style="color:#b8860b">' + bl.num + '</strong> — ' + formatDate(bl.date) + '</div></div>');
+      w.document.write('<div style="font-size:11px;color:#666;margin-bottom:8px">Réf. facture : ' + bl.invoiceNum + '</div>');
+      w.document.write('<table><thead><tr><th style="text-align:left">Produit</th><th>Volume</th><th>Quantité</th></tr></thead><tbody>' + rows + '</tbody></table>');
+      w.document.write('<div style="margin-top:40px;display:flex;justify-content:space-between"><div style="border-top:1px solid #999;width:200px;text-align:center;padding-top:6px;font-size:10px">Signature livreur</div><div style="border-top:1px solid #999;width:200px;text-align:center;padding-top:6px;font-size:10px">Signature client</div></div>');
+      w.document.write('</body></html>');
+      w.document.close();
+      setTimeout(() => w.print(), 400);
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22,
+        fontWeight: 700
+      }
+    }, "\uD83D\uDCE6 Bons de livraison"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginLeft: "auto"
+      }
+    }, /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: async () => {
+        const bl = await saveBL();
+        if (bl) printBL(bl);
+      },
+      icon: "\uD83D\uDCE6",
+      label: "G\xE9n\xE9rer BL depuis la facture en cours",
+      color: C.blue,
+      style: {
+        fontSize: 14,
+        padding: "10px 16px"
+      }
+    }))), savedBLs.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 40,
+        textAlign: "center",
+        fontSize: 18,
+        color: C.muted
+      }
+    }, "Aucun bon de livraison. Cr\xE9ez une facture puis g\xE9n\xE9rez un BL.") : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
+      }
+    }, savedBLs.map(bl => /*#__PURE__*/React.createElement("div", {
+      key: bl.id,
+      style: {
+        padding: "14px 18px",
+        borderRadius: 12,
+        border: "2px solid " + C.border,
+        background: "#fff",
+        display: "flex",
+        alignItems: "center",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 17,
+        fontWeight: 700,
+        color: C.blue
+      }
+    }, bl.num), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        color: C.muted
+      }
+    }, formatDate(bl.date)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 600
+      }
+    }, bl.client.nom)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: C.muted
+      }
+    }, bl.lignes.length + " produit" + (bl.lignes.length > 1 ? "s" : "") + " · Réf: " + bl.invoiceNum)), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: () => printBL(bl),
+      icon: "\uD83D\uDDA8\uFE0F",
+      label: "Imprimer",
+      color: C.blue,
+      style: {
+        fontSize: 13,
+        padding: "8px 14px",
+        minHeight: 40
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setConfirmDelete({
+        label: bl.num,
+        action: () => deleteBL(bl.id)
+      }),
+      style: {
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        border: "none",
+        background: C.dangerLight,
+        color: C.danger,
+        fontSize: 20,
+        cursor: "pointer"
+      }
+    }, "\uD83D\uDDD1\uFE0F")))));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // AVOIR PAGE
+  // ═══════════════════════════════════════════════════════════════════════
+  const AvoirPage = () => {
+    const [avoirSource, setAvoirSource] = useState(null);
+    const [avoirMotif, setAvoirMotif] = useState("");
+    const [avoirLignes, setAvoirLignes] = useState([]);
+    const [showAvoirForm, setShowAvoirForm] = useState(false);
+    const openAvoirFrom = inv => {
+      setAvoirSource(inv);
+      setAvoirMotif("");
+      setAvoirLignes(inv.lignes.map(l => ({
+        ...l,
+        qte: 0
+      })));
+      setShowAvoirForm(true);
+    };
+    const printAvoir = av => {
+      const w = window.open("", "_blank");
+      const rows = av.lignes.map((l, i) => '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fff5f5') + '"><td style="padding:4px 8px;border:1px solid #ddd;font-weight:600">' + l.nom + '</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:center">' + l.tva + '%</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:center;font-weight:700">' + l.qte + '</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:right">' + fmt(l.prixHT) + '</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:right;font-weight:700;color:#d32f2f">-' + fmt(l.prixHT * l.qte) + '</td></tr>').join("");
+      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + av.num + '</title><style>@page{size:A4;margin:15mm;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#d32f2f;color:#fff;padding:5px 8px;font-size:10px;}</style></head><body>');
+      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '</div><div style="text-align:right"><strong>' + av.client.nom + '</strong><br>' + (av.client.adresse || '') + (av.client.cp ? '<br>' + av.client.cp : '') + '</div></div>');
+      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:14px"><div style="background:#d32f2f;color:#fff;padding:8px 20px;border-radius:4px;font-weight:700;font-size:14px">AVOIR</div><div style="font-size:13px"><strong style="color:#d32f2f">' + av.num + '</strong> — ' + formatDate(av.date) + '</div></div>');
+      w.document.write('<div style="font-size:11px;color:#666;margin-bottom:4px">Réf. facture : ' + av.sourceInvoice + '</div>');
+      if (av.motif) w.document.write('<div style="font-size:11px;margin-bottom:8px"><strong>Motif :</strong> ' + av.motif + '</div>');
+      w.document.write('<table><thead><tr><th style="text-align:left">Produit</th><th>TVA</th><th>Qté</th><th style="text-align:right">PU HT</th><th style="text-align:right">Total HT</th></tr></thead><tbody>' + rows + '</tbody></table>');
+      w.document.write('<div style="margin-top:12px;text-align:right;font-size:14px"><strong>Total avoir HT : </strong><span style="color:#d32f2f;font-weight:700">-' + fmt(av.totals.totalHT) + '</span><br><strong>Total avoir TTC : </strong><span style="color:#d32f2f;font-weight:800;font-size:16px">-' + fmtTTC2(av.totals.totalTTC) + '</span></div>');
+      w.document.write('</body></html>');
+      w.document.close();
+      setTimeout(() => w.print(), 400);
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22,
+        fontWeight: 700
+      }
+    }, "\u21A9\uFE0F Avoirs / Remboursements")), !showAvoirForm ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.blueLight,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 700,
+        color: C.blue,
+        marginBottom: 10
+      }
+    }, "Cr\xE9er un avoir depuis une facture"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        maxHeight: 200,
+        overflow: "auto"
+      }
+    }, savedInvoices.map(inv => /*#__PURE__*/React.createElement("div", {
+      key: inv.id,
+      onClick: () => openAvoirFrom(inv),
+      style: {
+        padding: "10px 14px",
+        borderRadius: 10,
+        border: "1px solid " + C.border,
+        background: "#fff",
+        cursor: "pointer",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, inv.num), " \u2014 ", inv.client.nom, " \u2014 ", fmt(inv.totals.totalTTC)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.danger,
+        fontWeight: 700,
+        fontSize: 16
+      }
+    }, "\u21A9\uFE0F"))))), savedAvoirs.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
+      }
+    }, savedAvoirs.map(av => /*#__PURE__*/React.createElement("div", {
+      key: av.id,
+      style: {
+        padding: "14px 18px",
+        borderRadius: 12,
+        border: "2px solid #ffcdd2",
+        background: "#fff5f5",
+        display: "flex",
+        alignItems: "center",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 17,
+        fontWeight: 700,
+        color: C.danger
+      }
+    }, av.num), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        color: C.muted
+      }
+    }, formatDate(av.date)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 600
+      }
+    }, av.client.nom)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: C.muted
+      }
+    }, "Réf: " + av.sourceInvoice + (av.motif ? " — " + av.motif : "") + " · ", /*#__PURE__*/React.createElement("strong", {
+      style: {
+        color: C.danger
+      }
+    }, "-" + fmtTTC2(av.totals.totalTTC)))), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: () => printAvoir(av),
+      icon: "\uD83D\uDDA8\uFE0F",
+      label: "Imprimer",
+      color: C.danger,
+      style: {
+        fontSize: 13,
+        padding: "8px 14px",
+        minHeight: 40
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setConfirmDelete({
+        label: av.num,
+        action: () => deleteAvoir(av.id)
+      }),
+      style: {
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        border: "none",
+        background: C.dangerLight,
+        color: C.danger,
+        fontSize: 20,
+        cursor: "pointer"
+      }
+    }, "\uD83D\uDDD1\uFE0F")))), savedAvoirs.length === 0 && savedInvoices.length === 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 40,
+        textAlign: "center",
+        fontSize: 18,
+        color: C.muted
+      }
+    }, "Aucune facture disponible pour cr\xE9er un avoir.")) :
+    /*#__PURE__*/
+    /* Formulaire d'avoir */
+    React.createElement("div", {
+      style: {
+        background: "#fff",
+        borderRadius: 14,
+        border: "2px solid #ffcdd2",
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.danger,
+        marginBottom: 12
+      }
+    }, "↩️ Avoir sur " + avoirSource.num + " — " + avoirSource.client.nom), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: label
+    }, "Motif de l'avoir"), /*#__PURE__*/React.createElement("input", {
+      value: avoirMotif,
+      onChange: e => setAvoirMotif(e.target.value),
+      style: input
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 700,
+        color: C.muted,
+        marginBottom: 8
+      }
+    }, "S\xE9lectionnez les quantit\xE9s \xE0 rembourser :"), avoirLignes.map((l, i) => /*#__PURE__*/React.createElement("div", {
+      key: l.id,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "8px 0",
+        borderBottom: "1px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: 600
+      }
+    }, l.nom, " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.muted,
+        fontWeight: 400
+      }
+    }, "(", fmt(l.prixHT), " HT \xD7 max ", avoirSource.lignes[i].qte, ")")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const u = [...avoirLignes];
+        if (u[i].qte > 0) u[i] = {
+          ...u[i],
+          qte: u[i].qte - 1
+        };
+        setAvoirLignes(u);
+      },
+      style: {
+        width: 40,
+        height: 40,
+        borderRadius: "8px 0 0 8px",
+        border: "2px solid " + C.border,
+        background: "#ffebee",
+        fontSize: 20,
+        cursor: "pointer",
+        color: C.danger
+      }
+    }, "\u2212"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 44,
+        height: 40,
+        border: "2px solid " + C.border,
+        borderLeft: "none",
+        borderRight: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 18,
+        fontWeight: 800
+      }
+    }, l.qte), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const u = [...avoirLignes];
+        if (u[i].qte < avoirSource.lignes[i].qte) u[i] = {
+          ...u[i],
+          qte: u[i].qte + 1
+        };
+        setAvoirLignes(u);
+      },
+      style: {
+        width: 40,
+        height: 40,
+        borderRadius: "0 8px 8px 0",
+        border: "2px solid " + C.border,
+        background: C.accentLight,
+        fontSize: 20,
+        cursor: "pointer",
+        color: C.accent
+      }
+    }, "+")))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10,
+        marginTop: 16
+      }
+    }, /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: () => setShowAvoirForm(false),
+      icon: "\u21A9",
+      label: "Annuler",
+      color: "#eee",
+      textColor: C.text
+    }), /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: async () => {
+        const lignesNonNull = avoirLignes.filter(l => l.qte > 0);
+        if (lignesNonNull.length === 0) {
+          showMsg("Aucune quantité sélectionnée");
+          return;
+        }
+        const av = await saveAvoir(avoirSource, avoirMotif, lignesNonNull);
+        if (av) printAvoir(av);
+        setShowAvoirForm(false);
+      },
+      icon: "\uD83D\uDCBE",
+      label: "Enregistrer l'avoir",
+      color: C.danger
+    }))));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DASHBOARD PAGE
+  // ═══════════════════════════════════════════════════════════════════════
+  const DashboardPage = () => {
+    const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+    const monthlyData = useMemo(() => {
+      const map = {};
+      savedInvoices.forEach(inv => {
+        const m = inv.date.substring(0, 7);
+        if (!map[m]) map[m] = {
+          ht: 0,
+          ttc: 0,
+          count: 0,
+          products: {}
+        };
+        map[m].count++;
+        map[m].ht += inv.totals.totalHT;
+        map[m].ttc += inv.totals.totalTTC;
+        inv.lignes.forEach(l => {
+          if (!map[m].products[l.nom]) map[m].products[l.nom] = {
+            qte: 0,
+            ht: 0
+          };
+          map[m].products[l.nom].qte += l.qte;
+          map[m].products[l.nom].ht += l.prixHT * l.qte;
+        });
+      });
+      // Avoirs reduce
+      savedAvoirs.forEach(av => {
+        const m = av.date.substring(0, 7);
+        if (map[m]) {
+          map[m].ht -= av.totals.totalHT;
+          map[m].ttc -= av.totals.totalTTC;
+        }
+      });
+      return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+    }, [savedInvoices, savedAvoirs]);
+    const totalCA = monthlyData.reduce((s, [, d]) => s + d.ttc, 0);
+    const totalHT = monthlyData.reduce((s, [, d]) => s + d.ht, 0);
+    const totalFactures = monthlyData.reduce((s, [, d]) => s + d.count, 0);
+    const totalAvoirs = savedAvoirs.reduce((s, a) => s + a.totals.totalTTC, 0);
+    const maxTTC = Math.max(...monthlyData.map(([, d]) => d.ttc), 1);
+
+    // Top produits
+    const topProducts = useMemo(() => {
+      const map = {};
+      savedInvoices.forEach(inv => inv.lignes.forEach(l => {
+        if (!map[l.nom]) map[l.nom] = {
+          nom: l.nom,
+          qte: 0,
+          ht: 0
+        };
+        map[l.nom].qte += l.qte;
+        map[l.nom].ht += l.prixHT * l.qte;
+      }));
+      return Object.values(map).sort((a, b) => b.ht - a.ht).slice(0, 10);
+    }, [savedInvoices]);
+    const topMax = topProducts.length > 0 ? topProducts[0].ht : 1;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 700,
+        marginBottom: 16
+      }
+    }, "\uD83D\uDCC8 Tableau de bord"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: 12,
+        marginBottom: 20
+      }
+    }, [{
+      label: "CA Total TTC",
+      value: fmtTTC2(totalCA),
+      icon: "💰",
+      color: C.goldDark,
+      bg: C.goldLight
+    }, {
+      label: "Total HT",
+      value: fmt(totalHT),
+      icon: "📊",
+      color: C.accent,
+      bg: C.accentLight
+    }, {
+      label: "Factures",
+      value: totalFactures,
+      icon: "📄",
+      color: C.blue,
+      bg: C.blueLight
+    }, {
+      label: "Avoirs TTC",
+      value: totalAvoirs > 0 ? "-" + fmtTTC2(totalAvoirs) : "0,00 €",
+      icon: "↩️",
+      color: C.danger,
+      bg: C.dangerLight
+    }].map((card, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        background: card.bg,
+        borderRadius: 14,
+        padding: "18px 20px",
+        border: "2px solid " + C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: C.muted,
+        fontWeight: 600,
+        marginBottom: 6
+      }
+    }, card.icon, " ", card.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        fontWeight: 800,
+        color: card.color
+      }
+    }, card.value)))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#fff",
+        borderRadius: 14,
+        border: "2px solid " + C.border,
+        padding: 20,
+        marginBottom: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        marginBottom: 16
+      }
+    }, "\uD83D\uDCCA Chiffre d'affaires mensuel (TTC)"), monthlyData.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 20,
+        textAlign: "center",
+        color: C.muted
+      }
+    }, "Aucune donn\xE9e") : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-end",
+        gap: 8,
+        height: 200,
+        paddingTop: 10
+      }
+    }, monthlyData.map(([month, data]) => {
+      const [y, m] = month.split("-");
+      const pct = data.ttc / maxTTC * 100;
+      return /*#__PURE__*/React.createElement("div", {
+        key: month,
+        style: {
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          fontWeight: 700,
+          color: C.goldDark
+        }
+      }, fmtTTC2(data.ttc)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: "100%",
+          background: "linear-gradient(180deg, " + C.gold + ", " + C.goldDark + ")",
+          borderRadius: "6px 6px 0 0",
+          height: Math.max(pct * 1.6, 4),
+          transition: "height .5s"
+        }
+      }), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: C.muted,
+          fontWeight: 600
+        }
+      }, MOIS[parseInt(m) - 1]), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: C.muted
+        }
+      }, y), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: C.blue
+        }
+      }, data.count + " fac."));
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#fff",
+        borderRadius: 14,
+        border: "2px solid " + C.border,
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        marginBottom: 16
+      }
+    }, "\uD83C\uDFC6 Top 10 produits (CA HT)"), topProducts.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 20,
+        textAlign: "center",
+        color: C.muted
+      }
+    }, "Aucune donn\xE9e") : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
+      }
+    }, topProducts.map((p, i) => /*#__PURE__*/React.createElement("div", {
+      key: p.nom,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 30,
+        fontSize: 18,
+        fontWeight: 800,
+        color: i < 3 ? C.gold : C.muted,
+        textAlign: "center"
+      }
+    }, i + 1), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 600
+      }
+    }, p.nom), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 700,
+        color: C.goldDark
+      }
+    }, fmt(p.ht), " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.muted,
+        fontWeight: 400,
+        fontSize: 13
+      }
+    }, "(", p.qte, " vendus)"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 8,
+        background: "#f0ebe0",
+        borderRadius: 4,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: "100%",
+        width: p.ht / topMax * 100 + "%",
+        background: i < 3 ? C.gold : C.accent,
+        borderRadius: 4,
+        transition: "width .5s"
+      }
+    }))))))));
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════
+  return loading ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100vh",
+      fontFamily: "'Segoe UI',sans-serif",
+      fontSize: 22,
+      color: C.gold
+    }
+  }, "Chargement...") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Segoe UI', Tahoma, Verdana, sans-serif",
+      background: "linear-gradient(170deg, " + C.bg + " 0%, #ece3d0 100%)",
+      minHeight: "100vh",
+      color: C.text
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg, #2a2118, #4a3a28)",
+      color: "#fff",
+      padding: "12px 24px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 36
+    }
+  }, "\uD83C\uDFE1"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 700
+    }
+  }, "Gaec Tisserand"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      opacity: 0.6
+    }
+  }, "Facturation \u2014 Fougerolles"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6
+    }
+  }, [{
+    id: "facture",
+    icon: "📝",
+    label: "Facture"
+  }, {
+    id: "compta",
+    icon: "✅",
+    label: "Saisie compta"
+  }, {
+    id: "recap",
+    icon: "📊",
+    label: "Suivi ventes"
+  }, {
+    id: "recapAlcool",
+    icon: "🧪",
+    label: "Suivi alcool"
+  }, {
+    id: "gestion",
+    icon: "⚙️",
+    label: "Gérer"
+  }, {
+    id: "bl",
+    icon: "📦",
+    label: "BL"
+  }, {
+    id: "avoir",
+    icon: "↩️",
+    label: "Avoir"
+  }, {
+    id: "dashboard",
+    icon: "📈",
+    label: "Dashboard"
+  }, {
+    id: "apercu",
+    icon: "🖨️",
+    label: "Imprimer"
+  }].map(tab => /*#__PURE__*/React.createElement("button", {
+    key: tab.id,
+    onClick: () => setPage(tab.id),
+    style: {
+      padding: "10px 20px",
+      borderRadius: 10,
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 16,
+      fontWeight: 700,
+      background: page === tab.id ? C.gold : "rgba(255,255,255,0.1)",
+      color: page === tab.id ? "#fff" : "rgba(255,255,255,0.7)",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      transition: "all .2s",
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, tab.icon), " ", tab.label, tab.id === "compta" && unsavedComptaCount > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      top: -6,
+      right: -6,
+      background: "#d32f2f",
+      color: "#fff",
+      borderRadius: "50%",
+      width: 22,
+      height: 22,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 800,
+      border: "2px solid #2a2118"
+    }
+  }, unsavedComptaCount))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowHistoryModal(true),
+    style: {
+      padding: "10px 20px",
+      borderRadius: 10,
+      border: "1px solid rgba(255,255,255,0.2)",
+      background: "rgba(255,255,255,0.08)",
+      color: "#fff",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 16,
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, "\uD83D\uDCC2"), " Historique (", savedInvoices.length, ")"))), unsavedComptaCount > 0 && page !== "compta" && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setPage("compta"),
+    style: {
+      background: "linear-gradient(90deg, #d32f2f, #c62828)",
+      color: "#fff",
+      padding: "10px 24px",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 24
+    }
+  }, "\u26A0\uFE0F"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700
+    }
+  }, "Attention : " + unsavedComptaCount + " facture" + (unsavedComptaCount > 1 ? "s" : "") + " non saisie" + (unsavedComptaCount > 1 ? "s" : "") + " dans le logiciel comptable"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: "auto",
+      fontSize: 14,
+      opacity: 0.8,
+      textDecoration: "underline"
+    }
+  }, "Voir le suivi \u2192")), msg && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 80,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: C.accent,
+      color: "#fff",
+      padding: "14px 28px",
+      borderRadius: 12,
+      fontSize: 18,
+      fontWeight: 700,
+      boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+      zIndex: 999,
+      animation: "none"
+    }
+  }, "\u2705 ", msg), page === "facture" && /*#__PURE__*/React.createElement(FacturePage, null), page === "compta" && /*#__PURE__*/React.createElement(ComptaPage, null), page === "recap" && /*#__PURE__*/React.createElement(RecapPage, null), page === "recapAlcool" && /*#__PURE__*/React.createElement(RecapAlcoolPage, null), page === "gestion" && /*#__PURE__*/React.createElement(GestionPage, null), page === "bl" && /*#__PURE__*/React.createElement(BLPage, null), page === "avoir" && /*#__PURE__*/React.createElement(AvoirPage, null), page === "dashboard" && /*#__PURE__*/React.createElement(DashboardPage, null), page === "apercu" && /*#__PURE__*/React.createElement(ApercuPage, null), /*#__PURE__*/React.createElement(Modal, {
+    show: showVenteDirecte,
+    title: "\uD83C\uDFE0 Vente directe \u2014 Client particulier",
+    onClose: () => {
+      setShowVenteDirecte(false);
+      if (!venteDirecteClient) setClientId("");
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 15,
+      color: C.muted,
+      marginBottom: 16
+    }
+  }, "Saisissez les coordonn\xE9es du client pour cette vente \xE0 la ferme."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Pr\xE9nom"), /*#__PURE__*/React.createElement("input", {
+    value: venteDirecteForm.prenom,
+    onChange: e => setVenteDirecteForm({
+      ...venteDirecteForm,
+      prenom: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Nom *"), /*#__PURE__*/React.createElement("input", {
+    value: venteDirecteForm.nom,
+    onChange: e => setVenteDirecteForm({
+      ...venteDirecteForm,
+      nom: e.target.value
+    }),
+    style: input
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Adresse"), /*#__PURE__*/React.createElement("input", {
+    value: venteDirecteForm.adresse,
+    onChange: e => setVenteDirecteForm({
+      ...venteDirecteForm,
+      adresse: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Code postal + Ville"), /*#__PURE__*/React.createElement("input", {
+    value: venteDirecteForm.cp,
+    onChange: e => setVenteDirecteForm({
+      ...venteDirecteForm,
+      cp: e.target.value
+    }),
+    style: input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      marginTop: 20,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => {
+      setShowVenteDirecte(false);
+      if (!venteDirecteClient) setClientId("");
+    },
+    icon: "\u21A9",
+    label: "Annuler",
+    color: "#eee",
+    textColor: C.text
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: confirmVenteDirecte,
+    icon: "\u2705",
+    label: "Valider et facturer",
+    color: C.blue
+  }))), /*#__PURE__*/React.createElement(Modal, {
+    show: showClientModal,
+    title: editingItem ? "✏️ Modifier le client" : "➕ Nouveau client",
+    onClose: () => setShowClientModal(false)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Nom du client *"), /*#__PURE__*/React.createElement("input", {
+    value: clientForm.nom,
+    onChange: e => setClientForm({
+      ...clientForm,
+      nom: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Adresse"), /*#__PURE__*/React.createElement("input", {
+    value: clientForm.adresse,
+    onChange: e => setClientForm({
+      ...clientForm,
+      adresse: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Code postal + Ville"), /*#__PURE__*/React.createElement("input", {
+    value: clientForm.cp,
+    onChange: e => setClientForm({
+      ...clientForm,
+      cp: e.target.value
+    }),
+    style: input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      marginTop: 20,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setShowClientModal(false),
+    icon: "\u21A9",
+    label: "Annuler",
+    color: "#eee",
+    textColor: C.text
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: saveClient,
+    icon: "\uD83D\uDCBE",
+    label: "Enregistrer",
+    color: C.blue
+  }))), /*#__PURE__*/React.createElement(Modal, {
+    show: showProductModal,
+    title: editingItem ? "✏️ Modifier le produit" : "➕ Nouveau produit",
+    onClose: () => setShowProductModal(false)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Nom du produit *"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.nom,
+    onChange: e => setProductForm({
+      ...productForm,
+      nom: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Cat\xE9gorie"), /*#__PURE__*/React.createElement("select", {
+    value: productForm.cat,
+    onChange: e => setProductForm({
+      ...productForm,
+      cat: e.target.value
+    }),
+    style: select
+  }, [...categories, "Nouvelle catégorie"].map(c => /*#__PURE__*/React.createElement("option", {
+    key: c,
+    value: c
+  }, c))), productForm.cat === "Nouvelle catégorie" && /*#__PURE__*/React.createElement("input", {
+    onChange: e => setProductForm({
+      ...productForm,
+      cat: e.target.value
+    }),
+    style: {
+      ...input,
+      marginTop: 8
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      cursor: "pointer",
+      padding: "10px 16px",
+      borderRadius: 10,
+      background: productForm.composite ? C.purpleLight : "#f5f5f5",
+      border: "2px solid " + (productForm.composite ? C.purple : C.border)
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: productForm.composite,
+    onChange: e => setProductForm({
+      ...productForm,
+      composite: e.target.checked
+    }),
+    style: {
+      width: 20,
+      height: 20,
+      cursor: "pointer"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 15,
+      fontWeight: 600,
+      color: productForm.composite ? C.purple : C.muted
+    }
+  }, "TVA mixte (20% + 5,5%)")))), productForm.composite ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.purpleLight,
+      borderRadius: 12,
+      padding: 16,
+      border: "2px solid " + C.purple
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: C.purple,
+      marginBottom: 10
+    }
+  }, "\uD83D\uDCA1 Ce produit a deux taux de TVA"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Prix HT part 20% (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.prixHT20,
+    onChange: e => setProductForm({
+      ...productForm,
+      prixHT20: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Prix HT part 5,5% (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.prixHT55,
+    onChange: e => setProductForm({
+      ...productForm,
+      prixHT55: e.target.value
+    }),
+    style: input
+  }))), (productForm.prixHT20 || productForm.prixHT55) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      fontSize: 14,
+      color: C.purple,
+      fontWeight: 600
+    }
+  }, "Total HT : " + fmt((parseFloat((productForm.prixHT20 || "0").replace(",", ".")) || 0) + (parseFloat((productForm.prixHT55 || "0").replace(",", ".")) || 0)))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "TVA (%)"), /*#__PURE__*/React.createElement("select", {
+    value: productForm.tva,
+    onChange: e => setProductForm({
+      ...productForm,
+      tva: e.target.value
+    }),
+    style: select
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "20"
+  }, "20%"), /*#__PURE__*/React.createElement("option", {
+    value: "5.5"
+  }, "5,5%"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Prix HT (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.prixHT,
+    onChange: e => setProductForm({
+      ...productForm,
+      prixHT: e.target.value
+    }),
+    style: input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Volume (cl)"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.volume,
+    onChange: e => setProductForm({
+      ...productForm,
+      volume: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Alcool (%)"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.alcool,
+    onChange: e => setProductForm({
+      ...productForm,
+      alcool: e.target.value
+    }),
+    style: input
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      marginTop: 20,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setShowProductModal(false),
+    icon: "\u21A9",
+    label: "Annuler",
+    color: "#eee",
+    textColor: C.text
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: saveProduct,
+    icon: "\uD83D\uDCBE",
+    label: "Enregistrer",
+    color: C.accent
+  }))), /*#__PURE__*/React.createElement(Modal, {
+    show: showHistoryModal,
+    title: "\uD83D\uDCC2 Historique des factures",
+    onClose: () => setShowHistoryModal(false),
+    wide: true
+  }, savedInvoices.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 18,
+      color: C.muted,
+      textAlign: "center",
+      padding: 30
+    }
+  }, "Aucune facture enregistr\xE9e pour le moment") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 8
+    }
+  }, savedInvoices.map(inv => /*#__PURE__*/React.createElement("div", {
+    key: inv.id,
+    style: {
+      padding: "14px 16px",
+      borderRadius: 10,
+      border: "2px solid " + C.border,
+      background: C.goldLight,
+      display: "flex",
+      alignItems: "center",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, inv.num), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      color: C.muted
+    }
+  }, formatDate(inv.date), " \u2014 ", inv.client.nom)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700,
+      color: C.gold
+    }
+  }, fmt(inv.totals.totalTTC)), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => loadInvoice(inv),
+    icon: "\uD83D\uDCC2",
+    label: "Ouvrir",
+    color: C.blue,
+    style: {
+      fontSize: 14,
+      padding: "8px 14px"
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setConfirmDelete({
+      label: inv.num,
+      action: () => deleteInvoice(inv.id)
+    }),
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 10,
+      border: "none",
+      background: C.dangerLight,
+      color: C.danger,
+      fontSize: 20,
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDDD1\uFE0F"))))), /*#__PURE__*/React.createElement(Modal, {
+    show: showCatRenameModal,
+    title: "\u270F\uFE0F Renommer la cat\xE9gorie",
+    onClose: () => setShowCatRenameModal(false)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 16,
+      color: C.muted,
+      marginBottom: 16
+    }
+  }, "Tous les produits de la cat\xE9gorie ", /*#__PURE__*/React.createElement("strong", null, "\"", catRenameForm.oldName, "\""), " seront mis \xE0 jour."), /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Nouveau nom"), /*#__PURE__*/React.createElement("input", {
+    value: catRenameForm.newName,
+    onChange: e => setCatRenameForm({
+      ...catRenameForm,
+      newName: e.target.value
+    }),
+    style: input,
+    placeholder: "Nouveau nom de cat\xE9gorie"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => setShowCatRenameModal(false),
+    icon: "\u21A9",
+    label: "Annuler",
+    color: "#eee",
+    textColor: C.text
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: renameCategory,
+    icon: "\uD83D\uDCBE",
+    label: "Renommer",
+    color: C.purple
+  }))), /*#__PURE__*/React.createElement(ConfirmModal, null));
+}
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
