@@ -3528,9 +3528,9 @@ function App() {
         color: C.gold
       }
     }, fmt(inv.totals.totalTTC)), /*#__PURE__*/React.createElement(BigBtn, {
-      onClick: () => loadInvoice(inv),
-      icon: "\uD83D\uDCC2",
-      label: "Ouvrir",
+      onClick: () => setViewInvoice(inv),
+      icon: "\uD83D\uDC41\uFE0F",
+      label: "Voir",
       color: C.blue,
       style: {
         fontSize: 13,
@@ -4971,7 +4971,17 @@ function App() {
     label: "Imprimer"
   }].map(tab => /*#__PURE__*/React.createElement("button", {
     key: tab.id,
-    onClick: () => setPage(tab.id),
+    onClick: () => {
+      if (tab.id === "facture") {
+        setLignes([]);
+        setClientId("");
+        setVenteDirecteClient(null);
+        setDateFacture(today());
+        var y = new Date().getFullYear();
+        setInvoiceNum("FAC-" + y + "-" + String(nextNum).padStart(4, "0"));
+      }
+      setPage(tab.id);
+    },
     style: {
       padding: "10px 20px",
       borderRadius: 10,
@@ -5536,9 +5546,9 @@ function App() {
           fontWeight: 700
         }
       }, "Saisi"), /*#__PURE__*/React.createElement(BigBtn, {
-        onClick: () => loadInvoice(inv),
-        icon: "\uD83D\uDCC2",
-        label: "Ouvrir",
+        onClick: () => setViewInvoice(inv),
+        icon: "\uD83D\uDC41\uFE0F",
+        label: "Voir",
         color: C.blue,
         style: {
           fontSize: 13,
