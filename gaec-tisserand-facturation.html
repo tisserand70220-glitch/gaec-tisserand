@@ -746,6 +746,7 @@ function App() {
   const [msg, setMsg] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showCatRenameModal, setShowCatRenameModal] = useState(false);
+  const [viewInvoice, setViewInvoice] = useState(null);
   const [catRenameForm, setCatRenameForm] = useState({
     oldName: "",
     newName: ""
@@ -1247,13 +1248,22 @@ function App() {
     const nn = nextNum + 1;
     setNextNum(nn);
     await save("gt-nextnum", nn);
+    // Auto BL si pas vente directe
+    var bl = null;
+    if (clientId !== "vd") {
+      bl = await saveBL();
+    }
     const y = new Date().getFullYear();
     setInvoiceNum("FAC-" + y + "-" + String(nn).padStart(4, "0"));
     setLignes([]);
     setClientId("");
     setVenteDirecteClient(null);
     setDateFacture(today());
-    showMsg("Facture " + inv.num + " enregistrée !");
+    showMsg("Facture " + inv.num + " enregistrée !" + (bl ? " + BL " + bl.num : ""));
+    return {
+      inv,
+      bl
+    };
   };
   const loadInvoice = inv => {
     if (String(inv.client.id).startsWith("vd_")) {
@@ -1319,6 +1329,21 @@ function App() {
     await save("gt-bls", u);
     setConfirmDelete(null);
     showMsg("BL supprimé");
+  };
+
+  // ─── PRINT BL (global) ────
+  const printBL = bl => {
+    const w = window.open("", "_blank");
+    const rows = bl.lignes.map((l, i) => '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#f5f5f5') + '"><td style="padding:5px 8px;border:1px solid #ddd;font-weight:600">' + l.nom + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:700">' + l.qte + '</td></tr>').join("");
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + bl.num + '</title><style>@page{size:A4;margin:15mm;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#2a2118;color:#fff;padding:6px 8px;font-size:10px;text-transform:uppercase;}td{padding:5px 8px;border:1px solid #ddd;}</style></head><body>');
+    w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '</div><div style="text-align:right"><strong style="font-size:14px">' + bl.client.nom + '</strong><br>' + (bl.client.adresse || '') + (bl.client.cp ? '<br>' + bl.client.cp : '') + '</div></div>');
+    w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:14px"><div style="background:#2a2118;color:#fff;padding:8px 20px;border-radius:4px;font-weight:700;font-size:14px">BON DE LIVRAISON</div><div style="font-size:13px"><strong style="color:#b8860b">' + bl.num + '</strong> — ' + formatDate(bl.date) + '</div></div>');
+    w.document.write('<div style="font-size:11px;color:#666;margin-bottom:8px">Réf. facture : ' + bl.invoiceNum + '</div>');
+    w.document.write('<table><thead><tr><th style="text-align:left">Produit</th><th>Volume</th><th>Quantité</th></tr></thead><tbody>' + rows + '</tbody></table>');
+    w.document.write('<div style="margin-top:40px;display:flex;justify-content:space-between"><div style="border-top:1px solid #999;width:200px;text-align:center;padding-top:6px;font-size:10px">Signature livreur</div><div style="border-top:1px solid #999;width:200px;text-align:center;padding-top:6px;font-size:10px">Signature client</div></div>');
+    w.document.write('</body></html>');
+    w.document.close();
+    setTimeout(() => w.print(), 400);
   };
 
   // ─── AVOIR ────
@@ -1467,6 +1492,15 @@ function App() {
     if (page === "apercu" && !loading) {
       const timer = setTimeout(() => {
         handlePrint();
+        // Auto BL print si pas vente directe
+        if (clientId !== "vd" && client && lignes.length > 0) {
+          setTimeout(async () => {
+            const bl = await saveBL();
+            if (bl) {
+              setTimeout(() => printBL(bl), 500);
+            }
+          }, 1500);
+        }
       }, 600);
       return () => clearTimeout(timer);
     }
@@ -2146,22 +2180,15 @@ function App() {
     label: "Imprimer",
     color: C.blue
   }), /*#__PURE__*/React.createElement(BigBtn, {
-    onClick: saveInvoice,
+    onClick: async () => {
+      const result = await saveInvoice();
+      if (result && result.bl) {
+        setTimeout(() => printBL(result.bl), 1000);
+      }
+    },
     icon: "\uD83D\uDCBE",
     label: "Enregistrer",
     color: C.accent,
-    disabled: !client
-  }), /*#__PURE__*/React.createElement(BigBtn, {
-    onClick: async () => {
-      await saveInvoice();
-      const bl = await saveBL();
-      if (bl) {
-        setPage("bl");
-      }
-    },
-    icon: "\uD83D\uDCE6",
-    label: "Enregistrer + BL",
-    color: C.goldDark,
     disabled: !client
   })))));
 
@@ -3997,9 +4024,9 @@ function App() {
           transition: "all .2s"
         }
       }, done ? "✅ Saisi" : "À saisir"), /*#__PURE__*/React.createElement(BigBtn, {
-        onClick: () => loadInvoice(inv),
-        icon: "\uD83D\uDCC2",
-        label: "Ouvrir",
+        onClick: () => setViewInvoice(inv),
+        icon: "\uD83D\uDC41\uFE0F",
+        label: "Voir",
         color: C.blue,
         style: {
           fontSize: 13,
@@ -4112,40 +4139,29 @@ function App() {
     }, nonSaisies.map(inv => /*#__PURE__*/React.createElement(InvoiceRow, {
       key: inv.id,
       inv: inv
-    })))), saisies.length > 0 && /*#__PURE__*/React.createElement("div", {
+    })))), nonSaisies.length === 0 && savedInvoices.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
-        background: C.card,
-        borderRadius: 14,
-        border: "2px solid " + C.border,
-        overflow: "hidden"
+        padding: 40,
+        textAlign: "center"
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: "14px 18px",
-        background: C.accentLight,
-        borderBottom: "2px solid " + C.border,
-        display: "flex",
-        alignItems: "center",
-        gap: 10
+        fontSize: 48,
+        marginBottom: 12
       }
-    }, /*#__PURE__*/React.createElement("span", {
+    }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 22
-      }
-    }, "\uD83D\uDFE2"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 700,
         color: C.accent
       }
-    }, "Factures saisies (" + saisies.length + ")")), /*#__PURE__*/React.createElement("div", {
+    }, "Tout est \xE0 jour !"), /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: 10
+        fontSize: 16,
+        color: C.muted,
+        marginTop: 6
       }
-    }, saisies.map(inv => /*#__PURE__*/React.createElement(InvoiceRow, {
-      key: inv.id,
-      inv: inv
-    })))), savedInvoices.length === 0 && /*#__PURE__*/React.createElement("div", {
+    }, "Toutes les factures ont \xE9t\xE9 saisies dans le logiciel comptable.")), savedInvoices.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         padding: 40,
         textAlign: "center",
@@ -4161,19 +4177,6 @@ function App() {
   const BLPage = () => {
     const [showBLForm, setShowBLForm] = useState(false);
     const [avoirInv, setAvoirInv] = useState(null);
-    const printBL = bl => {
-      const w = window.open("", "_blank");
-      const rows = bl.lignes.map((l, i) => '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#f5f5f5') + '"><td style="padding:5px 8px;border:1px solid #ddd;font-weight:600">' + l.nom + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:700">' + l.qte + '</td></tr>').join("");
-      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + bl.num + '</title><style>@page{size:A4;margin:15mm;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#2a2118;color:#fff;padding:6px 8px;font-size:10px;text-transform:uppercase;}td{padding:5px 8px;border:1px solid #ddd;}</style></head><body>');
-      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '</div><div style="text-align:right"><strong style="font-size:14px">' + bl.client.nom + '</strong><br>' + (bl.client.adresse || '') + (bl.client.cp ? '<br>' + bl.client.cp : '') + '</div></div>');
-      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:14px"><div style="background:#2a2118;color:#fff;padding:8px 20px;border-radius:4px;font-weight:700;font-size:14px">BON DE LIVRAISON</div><div style="font-size:13px"><strong style="color:#b8860b">' + bl.num + '</strong> — ' + formatDate(bl.date) + '</div></div>');
-      w.document.write('<div style="font-size:11px;color:#666;margin-bottom:8px">Réf. facture : ' + bl.invoiceNum + '</div>');
-      w.document.write('<table><thead><tr><th style="text-align:left">Produit</th><th>Volume</th><th>Quantité</th></tr></thead><tbody>' + rows + '</tbody></table>');
-      w.document.write('<div style="margin-top:40px;display:flex;justify-content:space-between"><div style="border-top:1px solid #999;width:200px;text-align:center;padding-top:6px;font-size:10px">Signature livreur</div><div style="border-top:1px solid #999;width:200px;text-align:center;padding-top:6px;font-size:10px">Signature client</div></div>');
-      w.document.write('</body></html>');
-      w.document.close();
-      setTimeout(() => w.print(), 400);
-    };
     return /*#__PURE__*/React.createElement("div", {
       style: {
         padding: "20px 24px"
@@ -5414,68 +5417,151 @@ function App() {
       textAlign: "center",
       padding: 30
     }
-  }, "Aucune facture enregistr\xE9e pour le moment") : /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 8
-    }
-  }, savedInvoices.map(inv => /*#__PURE__*/React.createElement("div", {
-    key: inv.id,
-    style: {
-      padding: "14px 16px",
-      borderRadius: 10,
-      border: "2px solid " + C.border,
-      background: C.goldLight,
-      display: "flex",
-      alignItems: "center",
-      gap: 14
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 18,
-      fontWeight: 700
-    }
-  }, inv.num), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 15,
-      color: C.muted
-    }
-  }, formatDate(inv.date), " \u2014 ", inv.client.nom)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 700,
-      color: C.gold
-    }
-  }, fmt(inv.totals.totalTTC)), /*#__PURE__*/React.createElement(BigBtn, {
-    onClick: () => loadInvoice(inv),
-    icon: "\uD83D\uDCC2",
-    label: "Ouvrir",
-    color: C.blue,
-    style: {
-      fontSize: 14,
-      padding: "8px 14px"
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setConfirmDelete({
-      label: inv.num,
-      action: () => deleteInvoice(inv.id)
-    }),
-    style: {
-      width: 44,
-      height: 44,
-      borderRadius: 10,
-      border: "none",
-      background: C.dangerLight,
-      color: C.danger,
-      fontSize: 20,
-      cursor: "pointer"
-    }
-  }, "\uD83D\uDDD1\uFE0F"))))), /*#__PURE__*/React.createElement(Modal, {
+  }, "Aucune facture enregistr\xE9e pour le moment") : (() => {
+    const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+    const grouped = {};
+    savedInvoices.forEach(inv => {
+      const [y, m] = inv.date.split("-");
+      if (!grouped[y]) grouped[y] = {};
+      if (!grouped[y][m]) grouped[y][m] = [];
+      grouped[y][m].push(inv);
+    });
+    const years = Object.keys(grouped).sort((a, b) => b - a);
+    return /*#__PURE__*/React.createElement("div", null, years.map(year => /*#__PURE__*/React.createElement("div", {
+      key: year,
+      style: {
+        marginBottom: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: C.goldDark,
+        padding: "10px 0",
+        borderBottom: "3px solid " + C.gold,
+        marginBottom: 12
+      }
+    }, "\uD83D\uDCC5 ", year), Object.keys(grouped[year]).sort((a, b) => b - a).map(month => {
+      const invs = grouped[year][month];
+      const monthTotal = invs.reduce((s, i) => s + i.totals.totalTTC, 0);
+      return /*#__PURE__*/React.createElement("div", {
+        key: month,
+        style: {
+          marginBottom: 14
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          background: C.goldLight,
+          borderRadius: 10,
+          marginBottom: 6
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 16,
+          fontWeight: 700,
+          color: C.goldDark
+        }
+      }, MOIS[parseInt(month) - 1]), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          color: C.muted
+        }
+      }, invs.length + " facture" + (invs.length > 1 ? "s" : "")), /*#__PURE__*/React.createElement("span", {
+        style: {
+          marginLeft: "auto",
+          fontSize: 16,
+          fontWeight: 700,
+          color: C.gold
+        }
+      }, fmtTTC2(monthTotal))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          paddingLeft: 10
+        }
+      }, invs.map(inv => /*#__PURE__*/React.createElement("div", {
+        key: inv.id,
+        style: {
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid " + C.border,
+          background: "#fff",
+          display: "flex",
+          alignItems: "center",
+          gap: 12
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 8,
+          alignItems: "center"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 16,
+          fontWeight: 700
+        }
+      }, inv.num), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 13,
+          color: C.muted
+        }
+      }, formatDate(inv.date)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          fontWeight: 600
+        }
+      }, inv.client.nom))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 18,
+          fontWeight: 700,
+          color: C.gold
+        }
+      }, fmtTTC2(inv.totals.totalTTC)), comptaStatus[inv.id] && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          background: C.accentLight,
+          color: C.accent,
+          padding: "2px 8px",
+          borderRadius: 6,
+          fontWeight: 700
+        }
+      }, "Saisi"), /*#__PURE__*/React.createElement(BigBtn, {
+        onClick: () => loadInvoice(inv),
+        icon: "\uD83D\uDCC2",
+        label: "Ouvrir",
+        color: C.blue,
+        style: {
+          fontSize: 13,
+          padding: "6px 12px"
+        }
+      }), /*#__PURE__*/React.createElement("button", {
+        onClick: () => setConfirmDelete({
+          label: inv.num,
+          action: () => deleteInvoice(inv.id)
+        }),
+        style: {
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          border: "none",
+          background: C.dangerLight,
+          color: C.danger,
+          fontSize: 16,
+          cursor: "pointer"
+        }
+      }, "\uD83D\uDDD1\uFE0F")))));
+    }))));
+  })()), /*#__PURE__*/React.createElement(Modal, {
     show: showCatRenameModal,
     title: "\u270F\uFE0F Renommer la cat\xE9gorie",
     onClose: () => setShowCatRenameModal(false)
@@ -5516,7 +5602,219 @@ function App() {
     icon: "\uD83D\uDCBE",
     label: "Renommer",
     color: C.purple
-  }))), /*#__PURE__*/React.createElement(ConfirmModal, null));
+  }))), /*#__PURE__*/React.createElement(Modal, {
+    show: !!viewInvoice,
+    title: viewInvoice ? "👁️ " + viewInvoice.num + " — Consultation" : "",
+    onClose: () => setViewInvoice(null),
+    wide: true
+  }, viewInvoice && (() => {
+    const inv = viewInvoice;
+    const t = inv.totals;
+    return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        background: C.blueLight,
+        borderRadius: 12,
+        padding: "12px 16px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: C.blue,
+        textTransform: "uppercase"
+      }
+    }, "Client"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        marginTop: 4
+      }
+    }, inv.client.nom), inv.client.adresse && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: C.muted
+      }
+    }, inv.client.adresse), inv.client.cp && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: C.muted
+      }
+    }, inv.client.cp)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.goldLight,
+        borderRadius: 12,
+        padding: "12px 16px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: C.muted,
+        textTransform: "uppercase"
+      }
+    }, "Date"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: C.gold,
+        marginTop: 4
+      }
+    }, formatDate(inv.date)))), /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        background: "#2a2118",
+        color: "#fff"
+      }
+    }, /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "left",
+        fontSize: 13
+      }
+    }, "Produit"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "center",
+        fontSize: 13
+      }
+    }, "Vol."), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "center",
+        fontSize: 13
+      }
+    }, "TVA"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "center",
+        fontSize: 13
+      }
+    }, "Qt\xE9"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "right",
+        fontSize: 13
+      }
+    }, "PU HT"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "right",
+        fontSize: 13
+      }
+    }, "Total HT"))), /*#__PURE__*/React.createElement("tbody", null, inv.lignes.map((l, i) => /*#__PURE__*/React.createElement("tr", {
+      key: l.id || i,
+      style: {
+        background: i % 2 === 0 ? "#fff" : C.goldLight
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "6px 12px",
+        fontWeight: 600,
+        borderBottom: "1px solid " + C.border
+      }
+    }, l.nom), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "6px 12px",
+        textAlign: "center",
+        borderBottom: "1px solid " + C.border
+      }
+    }, l.volume > 0 ? l.volume + " cl" : ""), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "6px 12px",
+        textAlign: "center",
+        borderBottom: "1px solid " + C.border
+      }
+    }, l.tva + "%"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "6px 12px",
+        textAlign: "center",
+        fontWeight: 700,
+        borderBottom: "1px solid " + C.border
+      }
+    }, l.qte), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "6px 12px",
+        textAlign: "right",
+        borderBottom: "1px solid " + C.border
+      }
+    }, fmt(l.prixHT)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "6px 12px",
+        textAlign: "right",
+        fontWeight: 700,
+        borderBottom: "1px solid " + C.border
+      }
+    }, fmt(l.prixHT * l.qte)))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg, #2a2118, #4a3a28)",
+        borderRadius: 14,
+        padding: 20,
+        color: "#fff"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: 16,
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        opacity: 0.7
+      }
+    }, "Total HT"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, fmt(t.totalHT))), t.tva20 > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: 14,
+        opacity: 0.6
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "TVA 20%"), /*#__PURE__*/React.createElement("span", null, fmt(t.tva20))), t.tva55 > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: 14,
+        opacity: 0.6
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "TVA 5,5%"), /*#__PURE__*/React.createElement("span", null, fmt(t.tva55))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 2,
+        background: "rgba(255,255,255,0.2)",
+        margin: "8px 0"
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: 26
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, "TOTAL TTC"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 800,
+        color: "#f5d98e"
+      }
+    }, fmtTTC2(t.totalTTC)))));
+  })()), /*#__PURE__*/React.createElement(ConfirmModal, null));
 }
 ReactDOM.render(React.createElement(App), document.getElementById("root"));
 </script>
