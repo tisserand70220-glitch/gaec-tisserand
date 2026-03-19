@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gaec Tisserand — Accueil</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏡</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Source Sans 3', 'Segoe UI', sans-serif; background: linear-gradient(170deg, #f5f0e6 0%, #ece3d0 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+  .card { background: #fff; border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,0.1); max-width: 500px; width: 100%; overflow: hidden; }
+  .header { background: linear-gradient(135deg, #2a2118, #4a3a28); color: #fff; padding: 32px 24px; text-align: center; }
+  .header .logo { font-size: 56px; margin-bottom: 12px; }
+  .header h1 { font-family: 'Lora', serif; font-size: 28px; font-weight: 700; }
+  .header p { font-size: 14px; opacity: 0.6; margin-top: 4px; }
+  .links { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  a.btn { display: flex; align-items: center; gap: 16px; padding: 20px 24px; border-radius: 14px; text-decoration: none; color: #fff; font-size: 20px; font-weight: 700; transition: transform 0.15s, box-shadow 0.15s; }
+  a.btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+  a.btn .icon { font-size: 36px; flex-shrink: 0; }
+  a.btn .text { display: flex; flex-direction: column; }
+  a.btn .text small { font-size: 13px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+  .btn-desktop { background: linear-gradient(135deg, #b8860b, #d4a855); }
+  .btn-mobile { background: linear-gradient(135deg, #2e7d32, #4caf50); }
+  .footer { padding: 16px 24px; text-align: center; font-size: 12px; color: #8a7d6b; border-top: 1px solid #e0d5c0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="logo">🏡</div>
+    <h1>Gaec Tisserand</h1>
+    <p>Blanzey, 70220 Fougerolles</p>
+  </div>
+  <div class="links">
+    <a href="gaec-tisserand-facturation.html" class="btn btn-desktop">
+      <span class="icon">📋</span>
+      <span class="text">Facturation<small>Factures, suivi comptable, récaps mensuels</small></span>
+    </a>
+    <a href="gaec-tisserand-vente-directe.html" class="btn btn-mobile">
+      <span class="icon">📱</span>
+      <span class="text">Vente directe<small>Version mobile pour la vente à la ferme</small></span>
+    </a>
+  </div>
+  <div class="footer">Gaec Tisserand — Application de facturation</div>
+</div>
+</body>
+</html>
