@@ -1397,7 +1397,8 @@ function App() {
     let ht20 = 0,
       ht55 = 0,
       vol = 0,
-      alc = 0;
+      alc = 0,
+      totalTTC = 0;
     lignes.forEach(l => {
       const ht = l.prixHT * l.qte;
       if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
@@ -1406,6 +1407,9 @@ function App() {
         vol += vL;
         if (l.alcool > 0) alc += vL * (l.alcool / 100);
       }
+      // TTC: tronquer le prix unitaire TTC d'abord, puis multiplier par qté
+      var ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      totalTTC += ttcUnit * l.qte;
     });
     const tva20 = ht20 * 0.20,
       tva55 = ht55 * 0.055;
@@ -1415,7 +1419,7 @@ function App() {
       tva20,
       tva55,
       totalHT: ht20 + ht55,
-      totalTTC: ht20 + ht55 + tva20 + tva55,
+      totalTTC: Math.floor(totalTTC * 100) / 100,
       vol,
       alc
     };
@@ -5708,7 +5712,31 @@ function App() {
   }, viewInvoice && (() => {
     const inv = viewInvoice;
     const t = inv.totals;
+    const printViewInvoice = () => {
+      const w = window.open("", "_blank");
+      const rows = inv.lignes.map((l, i) => {
+        var pTTC = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+        return '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fefcf7') + '"><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;font-weight:600">' + l.nom + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:center">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:center">' + l.tva + '%</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:center;font-weight:700">' + l.qte + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:right">' + fmt(l.prixHT) + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:right;font-weight:600">' + pTTC.toFixed(2).replace(".", ",") + ' \u20ac</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:right;font-weight:700">' + fmt(l.prixHT * l.qte) + '</td></tr>';
+      }).join("");
+      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + inv.num + '</title><style>@page{size:A4;margin:15mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#2a2118;color:#fff;padding:6px 8px;font-size:9px;text-transform:uppercase;}</style></head><body>');
+      w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '<br>R.C.S. : ' + EMETTEUR.rcs + '<br>No de Gestion : ' + EMETTEUR.gestion + '<br>Banque : ' + EMETTEUR.banque + '</div><div style="text-align:right"><strong style="font-size:14px">' + inv.client.nom + '</strong><br>' + (inv.client.adresse || '') + (inv.client.cp ? '<br>' + inv.client.cp : '') + '</div></div>');
+      w.document.write('<div style="margin-bottom:14px"><span style="background:#2a2118;color:#fff;padding:6px 16px;border-radius:4px;font-weight:700">' + inv.num + '</span><span style="margin-left:12px;font-size:12px">Facture du ' + formatDate(inv.date) + '</span></div>');
+      w.document.write('<table><thead><tr><th style="text-align:left">Produit</th><th>Vol.</th><th>TVA</th><th>Qté</th><th style="text-align:right">PU HT</th><th style="text-align:right">PU TTC</th><th style="text-align:right">Total HT</th></tr></thead><tbody>' + rows + '</tbody></table>');
+      w.document.write('<table style="width:auto;margin-left:auto;margin-top:12px;font-size:11px"><tr><td style="padding:5px 14px;border:1px solid #d4c9b0;font-weight:600">Total HT</td><td style="padding:5px 14px;border:1px solid #d4c9b0;text-align:right;font-weight:700">' + fmt(t.totalHT) + '</td></tr><tr><td style="padding:5px 14px;border:1px solid #d4c9b0;font-weight:600">TVA 20%</td><td style="padding:5px 14px;border:1px solid #d4c9b0;text-align:right">' + fmt(t.tva20) + '</td></tr>' + (t.tva55 > 0 ? '<tr><td style="padding:5px 14px;border:1px solid #d4c9b0;font-weight:600">TVA 5,5%</td><td style="padding:5px 14px;border:1px solid #d4c9b0;text-align:right">' + fmt(t.tva55) + '</td></tr>' : '') + '<tr><td style="padding:5px 14px;background:#2a2118;color:#fff;font-weight:700">TOTAL TTC</td><td style="padding:5px 14px;background:#2a2118;color:#f5d98e;text-align:right;font-weight:700;font-size:13px">' + fmtTTC2(t.totalTTC) + '</td></tr></table>');
+      w.document.write('</body></html>');
+      w.document.close();
+      setTimeout(() => w.print(), 500);
+    };
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: printViewInvoice,
+      icon: "\uD83D\uDDA8\uFE0F",
+      label: "Imprimer cette facture",
+      color: C.accent
+    })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 12,
