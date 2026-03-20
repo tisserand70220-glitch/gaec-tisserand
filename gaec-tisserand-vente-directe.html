@@ -470,13 +470,12 @@ function VenteDirecteMobile() {
     var html = buildFactureHTML(inv);
     if (w) {
       try {
+        // Insert a print button + auto-print script at the end of the page
+        var printBtn = '<div id="printbar" style="position:fixed;bottom:0;left:0;right:0;background:#2e7d32;padding:16px;text-align:center;z-index:9999;"><button onclick="document.getElementById(\'printbar\').style.display=\'none\';window.print();" style="padding:18px 50px;font-size:22px;font-weight:700;border:none;border-radius:14px;background:#fff;color:#2e7d32;cursor:pointer;">🖨️ Imprimer</button></div>';
+        var autoScript = '<script>setTimeout(function(){try{document.getElementById("printbar").style.display="none";window.print();}catch(e){}},1500);<\/script>';
+        html = html.replace('</body>', printBtn + autoScript + '</body>');
         w.document.write(html);
         w.document.close();
-        setTimeout(function () {
-          try {
-            w.print();
-          } catch (e) {}
-        }, 600);
       } catch (e) {}
     }
   };
