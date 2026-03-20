@@ -414,6 +414,9 @@ function VenteDirecteMobile() {
       lignes: panier.slice(),
       totals: Object.assign({}, totals)
     };
+    // Open print window IMMEDIATELY (user gesture) before any await
+    var printWin = window.open("", "_blank");
+    // Now save async
     var u = [inv].concat(savedInvoices);
     setSavedInvoices(u);
     await save("gt-invoices", u);
@@ -422,7 +425,8 @@ function VenteDirecteMobile() {
     await save("gt-nextnum", nn);
     setLastSaved(inv);
     playSound("success");
-    printFacture(inv);
+    // Write facture to already-opened window
+    writePrintContent(printWin, inv);
     setStep(8);
   };
   const newFacture = () => {
@@ -438,7 +442,7 @@ function VenteDirecteMobile() {
     setLastSaved(null);
     setStep(0);
   };
-  const printFacture = inv => {
+  const buildFactureHTML = inv => {
     var data = inv;
     var logo = '<img src="data:image/png;base64,' + LOGO_B64 + '" style="width:60px;height:auto" />';
     var rowsHtml = data.lignes.map(function (l, i) {
@@ -454,35 +458,33 @@ function VenteDirecteMobile() {
       rowsHtml += '<tr><td style="padding:2px 4px;border:1px solid #ccc;background:' + bg2 + ';height:12px">&nbsp;</td><td style="padding:2px 4px;border:1px solid #ccc;background:' + bgG2 + '"></td><td style="padding:2px 4px;border:1px solid #ccc;background:' + bgG2 + '"></td><td style="padding:2px 4px;border:1px solid #ccc;background:' + bgG2 + '"></td><td style="padding:2px 4px;border:1px solid #ccc;background:' + bg2 + '"></td><td style="padding:2px 4px;border:1px solid #ccc;background:' + bg2 + '">&nbsp;</td><td style="padding:2px 4px;border:1px solid #ccc;background:' + bg2 + '">&nbsp;</td></tr>';
     }
     var t = data.totals;
-    // Android: inject print styles + content, print, cleanup
-    var printCSS = '@page{size:A4 portrait;margin:6mm 10mm;}*{margin:0;padding:0;box-sizing:border-box;}#print-zone{font-family:Arial,sans-serif;color:#222;font-size:8px;}#print-zone .page{display:flex;flex-direction:column;}#print-zone .legal{margin-top:4px;font-size:5.5px;color:#666;line-height:1.3;}';
-    var bodyContent = '<div class="page">';
-    bodyContent += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><div style="display:flex;gap:8px;align-items:flex-start"><div style="font-size:8px;line-height:1.4;border:1px solid #999;padding:5px 7px"><strong style="font-size:10px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '<br>R.C.S. : ' + EMETTEUR.rcs + '<br>No de Gestion : ' + EMETTEUR.gestion + '<br>Banque : ' + EMETTEUR.banque + '</div>' + logo + '</div><div style="text-align:left;font-size:8px;line-height:1.4;border:1px solid #999;padding:5px 7px;min-width:160px"><strong style="font-size:9px">' + data.client.nom + '</strong><br><br>' + (data.client.adresse || '') + (data.client.adresse ? '<br>' : '') + (data.client.cp || '') + '</div></div>';
-    bodyContent += '<div style="margin:4px 0"><span style="border:1px solid #222;padding:3px 8px;font-size:9px">Facture \u00e9mise le</span><span style="border:1px solid #222;padding:3px 8px;font-size:9px;margin-left:6px;font-weight:700">' + formatDate(data.date) + '</span></div>';
-    bodyContent += '<table style="width:100%;border-collapse:collapse;font-size:8px;border:1px solid #999"><thead><tr><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:left;font-size:7px">Intitul\u00e9s</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:center;font-size:7px">Vol.</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:center;font-size:7px">TVA</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:center;font-size:7px">Qt\u00e9</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:right;font-size:7px">PU HT</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:right;font-size:7px">PU TTC</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:right;font-size:7px">Total HT</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>';
-    bodyContent += '<div style="margin-top:4px"><table style="width:100%;border-collapse:collapse;font-size:8px"><tr><td style="padding:2px 6px;border:1px solid #999;font-weight:600">TVA 5.5%</td><td style="padding:2px 6px;border:1px solid #999;text-align:right">' + (t.tva55 > 0 ? fmt(t.tva55) : '- \u20ac') + '</td><td style="padding:2px 6px;border:1px solid #999"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:600">Total HT (TVA 5.5%)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + (t.ht55 > 0 ? fmt(t.ht55) : '- \u20ac') + '</td></tr><tr><td style="padding:2px 6px;border:1px solid #999;font-weight:600">TVA 20%</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + fmt(t.tva20) + '</td><td style="padding:2px 6px;border:1px solid #999"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:600">Total HT (TVA 20%)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + fmt(t.ht20) + '</td></tr><tr><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:700">Grand total (HT)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + fmt(t.totalHT) + '</td></tr><tr><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:700;background:#d4edda">Grand total (TTC)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700;background:#d4edda;font-size:9px">' + fmtTTC2(t.totalTTC) + '</td></tr></table>';
-    bodyContent += '<div class="legal">Nous nous r\u00e9servons la propri\u00e9t\u00e9 des mat\u00e9riels et fournitures jusqu\u0027au paiement complet du prix de l\u0027acheteur.<br>Notre r\u00e9serve de propri\u00e9t\u00e9 porte aussi bien sur les marchandises que sur leur prix si elles ont d\u00e9j\u00e0 \u00e9t\u00e9 revendues.<br>Loi N\u00b0 80.335 du 12 Mai 1980. Nos factures sont payables comptant sans escompte sauf accord pr\u00e9alable, int\u00e9r\u00eat de retard 3 fois le taux l\u00e9gal.</div></div></div>';
-    var root = document.getElementById("root");
-    root.style.display = "none";
-    // Inject print CSS
-    var styleTag = document.createElement("style");
-    styleTag.id = "print-style";
-    styleTag.textContent = printCSS;
-    document.head.appendChild(styleTag);
-    // Inject content
-    var printDiv = document.createElement("div");
-    printDiv.id = "print-zone";
-    printDiv.innerHTML = bodyContent;
-    document.body.appendChild(printDiv);
-    setTimeout(function () {
-      window.print();
-      setTimeout(function () {
-        printDiv.remove();
-        var s = document.getElementById("print-style");
-        if (s) s.remove();
-        root.style.display = "";
-      }, 1500);
-    }, 400);
+    var h = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>' + data.num + '</title><style>@page{size:A4 portrait;margin:6mm 10mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#222;font-size:8px;}.page{display:flex;flex-direction:column;}.legal{margin-top:4px;font-size:5.5px;color:#666;line-height:1.3;}</style></head><body><div class="page">';
+    h += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><div style="display:flex;gap:8px;align-items:flex-start"><div style="font-size:8px;line-height:1.4;border:1px solid #999;padding:5px 7px"><strong style="font-size:10px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '<br>R.C.S. : ' + EMETTEUR.rcs + '<br>No de Gestion : ' + EMETTEUR.gestion + '<br>Banque : ' + EMETTEUR.banque + '</div>' + logo + '</div><div style="text-align:left;font-size:8px;line-height:1.4;border:1px solid #999;padding:5px 7px;min-width:160px"><strong style="font-size:9px">' + data.client.nom + '</strong><br><br>' + (data.client.adresse || '') + (data.client.adresse ? '<br>' : '') + (data.client.cp || '') + '</div></div>';
+    h += '<div style="margin:4px 0"><span style="border:1px solid #222;padding:3px 8px;font-size:9px">Facture \u00e9mise le</span><span style="border:1px solid #222;padding:3px 8px;font-size:9px;margin-left:6px;font-weight:700">' + formatDate(data.date) + '</span></div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:8px;border:1px solid #999"><thead><tr><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:left;font-size:7px">Intitul\u00e9s</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:center;font-size:7px">Vol.</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:center;font-size:7px">TVA</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:center;font-size:7px">Qt\u00e9</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:right;font-size:7px">PU HT</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:right;font-size:7px">PU TTC</th><th style="background:#c0d8f0;border:1px solid #999;padding:3px 4px;text-align:right;font-size:7px">Total HT</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>';
+    h += '<div style="margin-top:4px"><table style="width:100%;border-collapse:collapse;font-size:8px"><tr><td style="padding:2px 6px;border:1px solid #999;font-weight:600">TVA 5.5%</td><td style="padding:2px 6px;border:1px solid #999;text-align:right">' + (t.tva55 > 0 ? fmt(t.tva55) : '- \u20ac') + '</td><td style="padding:2px 6px;border:1px solid #999"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:600">Total HT (TVA 5.5%)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + (t.ht55 > 0 ? fmt(t.ht55) : '- \u20ac') + '</td></tr><tr><td style="padding:2px 6px;border:1px solid #999;font-weight:600">TVA 20%</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + fmt(t.tva20) + '</td><td style="padding:2px 6px;border:1px solid #999"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:600">Total HT (TVA 20%)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + fmt(t.ht20) + '</td></tr><tr><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:700">Grand total (HT)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700">' + fmt(t.totalHT) + '</td></tr><tr><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="padding:2px 6px;border:1px solid #999;font-weight:700;background:#d4edda">Grand total (TTC)</td><td style="padding:2px 6px;border:1px solid #999;text-align:right;font-weight:700;background:#d4edda;font-size:9px">' + fmtTTC2(t.totalTTC) + '</td></tr></table>';
+    h += '<div class="legal">Nous nous r\u00e9servons la propri\u00e9t\u00e9 des mat\u00e9riels et fournitures jusqu\u0027au paiement complet du prix de l\u0027acheteur.<br>Notre r\u00e9serve de propri\u00e9t\u00e9 porte aussi bien sur les marchandises que sur leur prix si elles ont d\u00e9j\u00e0 \u00e9t\u00e9 revendues.<br>Loi N\u00b0 80.335 du 12 Mai 1980. Nos factures sont payables comptant sans escompte sauf accord pr\u00e9alable, int\u00e9r\u00eat de retard 3 fois le taux l\u00e9gal.</div></div></div></body></html>';
+    return h;
+  };
+  const writePrintContent = (w, inv) => {
+    var html = buildFactureHTML(inv);
+    if (w) {
+      try {
+        w.document.write(html);
+        w.document.close();
+        setTimeout(function () {
+          try {
+            w.print();
+          } catch (e) {}
+        }, 600);
+      } catch (e) {}
+    }
+  };
+
+  // For "Réimprimer" button (direct user click = window.open OK)
+  const printFacture = inv => {
+    var w = window.open("", "_blank");
+    writePrintContent(w, inv);
   };
   const fs = {
     position: "fixed",
