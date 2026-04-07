@@ -3603,7 +3603,9 @@ function App() {
     for (var r of FAMILLE_RULES) {
       if (r.match(nom)) return r.famille;
     }
-    return nom;
+    // Fallback: strip volume (ex: "Griottes 70cl" → "Griottes")
+    var base = nom.replace(/\s*\d+\s*cl\b/gi, "").replace(/\s*\(\d+[,%]?\d*%?\)/g, "").replace(/\s+/g, " ").trim();
+    return base || nom;
   };
   const recapAlcoolData = useMemo(() => {
     if (!recapAlcoolMonth) return {
@@ -5179,7 +5181,7 @@ function App() {
       zIndex: 999,
       animation: "none"
     }
-  }, "\u2705 ", msg), page === "facture" && /*#__PURE__*/React.createElement(FacturePage, null), page === "compta" && /*#__PURE__*/React.createElement(ComptaPage, null), page === "recap" && /*#__PURE__*/React.createElement(RecapPage, null), page === "recapAlcool" && /*#__PURE__*/React.createElement(RecapAlcoolPage, null), page === "gestion" && /*#__PURE__*/React.createElement(GestionPage, null), page === "bl" && /*#__PURE__*/React.createElement(BLPage, null), page === "avoir" && /*#__PURE__*/React.createElement(AvoirPage, null), page === "dashboard" && /*#__PURE__*/React.createElement(DashboardPage, null), page === "apercu" && /*#__PURE__*/React.createElement(ApercuPage, null), /*#__PURE__*/React.createElement(Modal, {
+  }, "\u2705 ", msg), page === "facture" && FacturePage(), page === "compta" && ComptaPage(), page === "recap" && RecapPage(), page === "recapAlcool" && RecapAlcoolPage(), page === "gestion" && GestionPage(), page === "bl" && BLPage(), page === "avoir" && AvoirPage(), page === "dashboard" && DashboardPage(), page === "apercu" && ApercuPage(), /*#__PURE__*/React.createElement(Modal, {
     show: showVenteDirecte,
     title: "\uD83C\uDFE0 Vente directe \u2014 Client particulier",
     onClose: () => {
