@@ -1356,8 +1356,10 @@ function App() {
       const ht = l.prixHT * l.qte;
       if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
     });
-    const tva20 = ht20 * 0.20,
-      tva55 = ht55 * 0.055;
+    const tva20 = Math.round(ht20 * 0.20 * 100) / 100,
+      tva55 = Math.round(ht55 * 0.055 * 100) / 100;
+    const totalHT = Math.round((ht20 + ht55) * 100) / 100;
+    const totalTTC = Math.round((totalHT + tva20 + tva55) * 100) / 100;
     const av = {
       id: Date.now(),
       num: avoirNum,
@@ -1370,8 +1372,8 @@ function App() {
         ht55,
         tva20,
         tva55,
-        totalHT: ht20 + ht55,
-        totalTTC: ht20 + ht55 + tva20 + tva55
+        totalHT,
+        totalTTC
       },
       sourceInvoice: sourceInvoice.num
     };
@@ -1397,8 +1399,7 @@ function App() {
     let ht20 = 0,
       ht55 = 0,
       vol = 0,
-      alc = 0,
-      totalTTC = 0;
+      alc = 0;
     lignes.forEach(l => {
       const ht = l.prixHT * l.qte;
       if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
@@ -1407,19 +1408,18 @@ function App() {
         vol += vL;
         if (l.alcool > 0) alc += vL * (l.alcool / 100);
       }
-      // TTC: tronquer le prix unitaire TTC d'abord, puis multiplier par qté
-      var ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
-      totalTTC += ttcUnit * l.qte;
     });
-    const tva20 = ht20 * 0.20,
-      tva55 = ht55 * 0.055;
+    const tva20 = Math.round(ht20 * 0.20 * 100) / 100;
+    const tva55 = Math.round(ht55 * 0.055 * 100) / 100;
+    const totalHT = Math.round((ht20 + ht55) * 100) / 100;
+    const totalTTC = Math.round((totalHT + tva20 + tva55) * 100) / 100;
     return {
       ht20,
       ht55,
       tva20,
       tva55,
-      totalHT: ht20 + ht55,
-      totalTTC: Math.floor(totalTTC * 100) / 100,
+      totalHT,
+      totalTTC,
       vol,
       alc
     };

@@ -296,10 +296,42 @@ function VenteDirecteMobile() {
     };
   }, []);
   const categories = useMemo(() => [...new Set(products.map(p => p.cat))].filter(Boolean), [products]);
-  const filtered = useMemo(() => {
-    var p = catFilter === "all" ? products : products.filter(function (x) {
-      return x.cat === catFilter;
+
+  // Favoris: top 10 produits les plus vendus
+  const favorites = useMemo(() => {
+    var countMap = {};
+    savedInvoices.forEach(function (inv) {
+      inv.lignes.forEach(function (l) {
+        if (!countMap[l.id]) countMap[l.id] = {
+          id: l.id,
+          count: 0
+        };
+        countMap[l.id].count += l.qte;
+      });
     });
+    var sorted = Object.values(countMap).sort(function (a, b) {
+      return b.count - a.count;
+    });
+    return sorted.slice(0, 10).map(function (f) {
+      var prod = products.find(function (p) {
+        return p.id === f.id;
+      });
+      return prod ? Object.assign({}, prod, {
+        salesCount: f.count
+      }) : null;
+    }).filter(Boolean);
+  }, [savedInvoices, products]);
+  const filtered = useMemo(() => {
+    var p;
+    if (catFilter === "favorites") {
+      p = favorites;
+    } else if (catFilter === "all") {
+      p = products;
+    } else {
+      p = products.filter(function (x) {
+        return x.cat === catFilter;
+      });
+    }
     if (search.trim()) {
       var s = search.toLowerCase();
       p = p.filter(function (x) {
@@ -307,7 +339,7 @@ function VenteDirecteMobile() {
       });
     }
     return p;
-  }, [catFilter, search, products]);
+  }, [catFilter, search, products, favorites]);
   const addItem = prod => {
     if (prod.composite && prod.parts) {
       var id20 = prod.id + "_20",
@@ -380,25 +412,22 @@ function VenteDirecteMobile() {
     });
   };
   const totals = useMemo(() => {
-    var totalTTC = 0,
-      ht20 = 0,
+    var ht20 = 0,
       ht55 = 0;
     panier.forEach(function (l) {
-      // Tronquer le TTC unitaire d'abord, puis multiplier par qté
-      var ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
-      var ligneTTC = ttcUnit * l.qte;
-      totalTTC += ligneTTC;
       if (l.tva === 5.5) ht55 += l.prixHT * l.qte;else ht20 += l.prixHT * l.qte;
     });
-    var tva20 = ht20 * 0.20,
-      tva55 = ht55 * 0.055;
+    var tva20 = Math.round(ht20 * 0.20 * 100) / 100;
+    var tva55 = Math.round(ht55 * 0.055 * 100) / 100;
+    var totalHT = Math.round((ht20 + ht55) * 100) / 100;
+    var totalTTC = Math.round((totalHT + tva20 + tva55) * 100) / 100;
     return {
       ht20: ht20,
       ht55: ht55,
       tva20: tva20,
       tva55: tva55,
-      totalHT: ht20 + ht55,
-      totalTTC: Math.floor(totalTTC * 100) / 100
+      totalHT: totalHT,
+      totalTTC: totalTTC
     };
   }, [panier]);
   const nbArticles = panier.reduce(function (s, l) {
@@ -1045,7 +1074,21 @@ function VenteDirecteMobile() {
       paddingTop: 8,
       paddingBottom: 4
     }
-  }, ["all"].concat(categories).map(c => /*#__PURE__*/React.createElement("button", {
+  }, favorites.length > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setCatFilter("favorites"),
+    style: {
+      padding: "8px 16px",
+      borderRadius: 20,
+      border: "2px solid " + (catFilter === "favorites" ? "#e65100" : C.border),
+      background: catFilter === "favorites" ? "#fff3e0" : "#fff",
+      color: catFilter === "favorites" ? "#e65100" : C.muted,
+      fontSize: 14,
+      fontWeight: 700,
+      whiteSpace: "nowrap",
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "\u2B50 Favoris"), ["all"].concat(categories).map(c => /*#__PURE__*/React.createElement("button", {
     key: c,
     onClick: () => setCatFilter(c),
     style: {
