@@ -1334,6 +1334,10 @@ function App() {
   // ─── PRINT BL (global) ────
   const printBL = bl => {
     const w = window.open("", "_blank");
+    if (!w) {
+      alert("Autorisez les popups pour imprimer");
+      return;
+    }
     const rows = bl.lignes.map((l, i) => '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#f5f5f5') + '"><td style="padding:5px 8px;border:1px solid #ddd;font-weight:600">' + l.nom + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:700">' + l.qte + '</td></tr>').join("");
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + bl.num + '</title><style>@page{size:A4;margin:15mm;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#2a2118;color:#fff;padding:6px 8px;font-size:10px;text-transform:uppercase;}td{padding:5px 8px;border:1px solid #ddd;}</style></head><body>');
     w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '</div><div style="text-align:right"><strong style="font-size:14px">' + bl.client.nom + '</strong><br>' + (bl.client.adresse || '') + (bl.client.cp ? '<br>' + bl.client.cp : '') + '</div></div>');
@@ -1439,6 +1443,10 @@ function App() {
     const el = printRef.current;
     if (!el) return;
     const w = window.open("", "_blank");
+    if (!w) {
+      alert("Autorisez les popups pour imprimer");
+      return;
+    }
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"><title>' + invoiceNum + '</title><style>' + printCSS + '</style></head><body>');
     w.document.write(el.innerHTML);
     w.document.write("</body></html>");
@@ -3141,6 +3149,10 @@ function App() {
     const el = recapPrintRef.current;
     if (!el) return;
     const w = window.open("", "_blank");
+    if (!w) {
+      alert("Autorisez les popups pour imprimer");
+      return;
+    }
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Récap mensuel</title><style>@page{size:A4 landscape;margin:12mm 15mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#222;font-size:10px;}table{width:100%;border-collapse:collapse;font-size:9.5px;margin-top:8px;}th{background:#b8860b;color:#fff;padding:5px 6px;font-weight:700;font-size:8.5px;text-transform:uppercase;}td{padding:4px 6px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#faf6ee;}.right{text-align:right;}.bold{font-weight:700;}.title{font-size:16px;font-weight:700;margin-bottom:4px;}.subtitle{font-size:11px;color:#666;margin-bottom:12px;}.totrow td{background:#f8f0dc !important;font-weight:700;font-size:10px;border-top:2px solid #b8860b;}@media print{body{padding:0;}}</style></head><body>');
     w.document.write(el.innerHTML);
     w.document.write("</body></html>");
@@ -3551,7 +3563,7 @@ function App() {
   const FAMILLE_RULES = [{
     famille: "Kirsch",
     match: function (n) {
-      return /kirsch/i.test(n) && !/cerises/i.test(n);
+      return /kirsch/i.test(n) && !/cerise/i.test(n);
     }
   }, {
     famille: "Mirabelle",
@@ -3591,7 +3603,7 @@ function App() {
   }, {
     famille: "Cerises au Kirsch",
     match: function (n) {
-      return /cerises/i.test(n);
+      return /cerise/i.test(n);
     }
   }, {
     famille: "Vieille Cuvée",
@@ -3653,18 +3665,22 @@ function App() {
       const fam = getFamille(p.nom);
       if (!famMap[fam]) famMap[fam] = {
         famille: fam,
-        alcool: p.alcool,
+        degres: new Set(),
         produits: [],
         totalQte: 0,
         totalVol: 0,
         totalAlcoolPur: 0
       };
+      famMap[fam].degres.add(p.alcool);
       famMap[fam].totalQte += p.qte;
       famMap[fam].totalVol += p.volTotal;
       famMap[fam].totalAlcoolPur += p.alcPur;
       famMap[fam].produits.push(p);
     });
-    const familles = Object.values(famMap).sort((a, b) => b.totalAlcoolPur - a.totalAlcoolPur);
+    const familles = Object.values(famMap).map(f => {
+      f.alcoolLabel = [...f.degres].sort((a, b) => b - a).map(d => d + "°").join(" / ");
+      return f;
+    }).sort((a, b) => b.totalAlcoolPur - a.totalAlcoolPur);
     return {
       produits,
       familles,
@@ -3679,6 +3695,10 @@ function App() {
     const el = recapAlcoolPrintRef.current;
     if (!el) return;
     const w = window.open("", "_blank");
+    if (!w) {
+      alert("Autorisez les popups pour imprimer");
+      return;
+    }
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Suivi alcool</title><style>@page{size:A4 landscape;margin:12mm 15mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#222;font-size:10px;}table{width:100%;border-collapse:collapse;font-size:9.5px;margin-top:8px;}th{background:#6a1b9a;color:#fff;padding:5px 6px;font-weight:700;font-size:8.5px;text-transform:uppercase;}td{padding:4px 6px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#faf6ee;}.right{text-align:right;}.bold{font-weight:700;}.title{font-size:16px;font-weight:700;margin-bottom:4px;}.subtitle{font-size:11px;color:#666;margin-bottom:12px;}.totrow td{background:#f3e5f5 !important;font-weight:700;font-size:10px;border-top:2px solid #6a1b9a;}.detail td{font-size:8px;color:#888;padding:2px 6px 2px 24px;}@media print{body{padding:0;}}</style></head><body>');
     w.document.write(el.innerHTML);
     w.document.write("</body></html>");
@@ -3693,7 +3713,7 @@ function App() {
     const h = ["Famille", "Degré", "Bouteilles", "Volume (L)", "Alcool pur (L)"].join(sep);
     const rows = [];
     recapAlcoolData.familles.forEach(fam => {
-      rows.push([fam.famille, fam.alcool + "°", fam.totalQte, fmtN(fam.totalVol), fmtN(fam.totalAlcoolPur)].join(sep));
+      rows.push([fam.famille, fam.alcoolLabel, fam.totalQte, fmtN(fam.totalVol), fmtN(fam.totalAlcoolPur)].join(sep));
       fam.produits.forEach(p => {
         rows.push(["  ↳ " + p.nom, p.alcool + "°", p.qte, fmtN(p.volTotal), fmtN(p.alcPur)].join(sep));
       });
@@ -3898,7 +3918,7 @@ function App() {
         fontWeight: 600,
         borderBottom: "1px solid " + C.border
       }
-    }, fam.alcool + "°"), /*#__PURE__*/React.createElement("td", {
+    }, fam.alcoolLabel), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "10px 14px",
         textAlign: "right",
@@ -4405,6 +4425,10 @@ function App() {
     };
     const printAvoir = av => {
       const w = window.open("", "_blank");
+      if (!w) {
+        alert("Autorisez les popups pour imprimer");
+        return;
+      }
       const rows = av.lignes.map((l, i) => '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fff5f5') + '"><td style="padding:4px 8px;border:1px solid #ddd;font-weight:600">' + l.nom + '</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:center">' + l.tva + '%</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:center;font-weight:700">' + l.qte + '</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:right">' + fmt(l.prixHT) + '</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:right;font-weight:700;color:#d32f2f">-' + fmt(l.prixHT * l.qte) + '</td></tr>').join("");
       w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + av.num + '</title><style>@page{size:A4;margin:15mm;}body{font-family:Arial;font-size:11px;color:#222;}table{width:100%;border-collapse:collapse;}th{background:#d32f2f;color:#fff;padding:5px 8px;font-size:10px;}</style></head><body>');
       w.document.write('<div style="display:flex;justify-content:space-between;margin-bottom:16px"><div><strong style="font-size:16px">' + EMETTEUR.nom + '</strong><br>' + EMETTEUR.adresse + '</div><div style="text-align:right"><strong>' + av.client.nom + '</strong><br>' + (av.client.adresse || '') + (av.client.cp ? '<br>' + av.client.cp : '') + '</div></div>');
@@ -5721,6 +5745,10 @@ function App() {
     const t = inv.totals;
     const printViewInvoice = () => {
       const w = window.open("", "_blank");
+      if (!w) {
+        alert("Autorisez les popups pour imprimer");
+        return;
+      }
       const rows = inv.lignes.map((l, i) => {
         var pTTC = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
         return '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fefcf7') + '"><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;font-weight:600">' + l.nom + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:center">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:center">' + l.tva + '%</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:center;font-weight:700">' + l.qte + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:right">' + fmt(l.prixHT) + '</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:right;font-weight:600">' + pTTC.toFixed(2).replace(".", ",") + ' \u20ac</td><td style="padding:5px 8px;border-bottom:1px solid #e8e0d0;text-align:right;font-weight:700">' + fmt(l.prixHT * l.qte) + '</td></tr>';
