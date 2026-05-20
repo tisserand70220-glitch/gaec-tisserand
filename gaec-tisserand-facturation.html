@@ -1447,7 +1447,7 @@ function App() {
       var lineTotal = pTTC * l.qte;
       return '<tr><td class="nom">' + l.nom + '</td><td class="cell">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td class="qte">' + l.qte + '</td><td class="prix">' + pTTC.toFixed(2).replace(".", ",") + ' \u20ac</td><td class="total">' + lineTotal.toFixed(2).replace(".", ",") + ' \u20ac</td></tr>';
     }).join("");
-    var nbEmpty = Math.max(0, 13 - data.lignes.length);
+    var nbEmpty = Math.max(0, 22 - data.lignes.length);
     for (var i = 0; i < nbEmpty; i++) {
       rowsHtml += '<tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>';
     }
@@ -4332,9 +4332,9 @@ function App() {
   // ═══════════════════════════════════════════════════════════════════════
   // BON DE LIVRAISON PAGE
   // ═══════════════════════════════════════════════════════════════════════
+  const [showBLForm, setShowBLForm] = useState(false);
+  const [avoirInv, setAvoirInv] = useState(null);
   const BLPage = () => {
-    const [showBLForm, setShowBLForm] = useState(false);
-    const [avoirInv, setAvoirInv] = useState(null);
     return /*#__PURE__*/React.createElement("div", {
       style: {
         padding: "20px 24px"
@@ -4453,11 +4453,11 @@ function App() {
   // ═══════════════════════════════════════════════════════════════════════
   // AVOIR PAGE
   // ═══════════════════════════════════════════════════════════════════════
+  const [avoirSource, setAvoirSource] = useState(null);
+  const [avoirMotif, setAvoirMotif] = useState("");
+  const [avoirLignes, setAvoirLignes] = useState([]);
+  const [showAvoirForm, setShowAvoirForm] = useState(false);
   const AvoirPage = () => {
-    const [avoirSource, setAvoirSource] = useState(null);
-    const [avoirMotif, setAvoirMotif] = useState("");
-    const [avoirLignes, setAvoirLignes] = useState([]);
-    const [showAvoirForm, setShowAvoirForm] = useState(false);
     const openAvoirFrom = inv => {
       setAvoirSource(inv);
       setAvoirMotif("");
@@ -4768,40 +4768,40 @@ function App() {
   // ═══════════════════════════════════════════════════════════════════════
   // DASHBOARD PAGE
   // ═══════════════════════════════════════════════════════════════════════
+  const dashboardMonthlyData = useMemo(() => {
+    const map = {};
+    savedInvoices.forEach(inv => {
+      const m = inv.date.substring(0, 7);
+      if (!map[m]) map[m] = {
+        ht: 0,
+        ttc: 0,
+        count: 0,
+        products: {}
+      };
+      map[m].count++;
+      map[m].ht += inv.totals.totalHT;
+      map[m].ttc += inv.totals.totalTTC;
+      inv.lignes.forEach(l => {
+        if (!map[m].products[l.nom]) map[m].products[l.nom] = {
+          qte: 0,
+          ht: 0
+        };
+        map[m].products[l.nom].qte += l.qte;
+        map[m].products[l.nom].ht += l.prixHT * l.qte;
+      });
+    });
+    savedAvoirs.forEach(av => {
+      const m = av.date.substring(0, 7);
+      if (map[m]) {
+        map[m].ht -= av.totals.totalHT;
+        map[m].ttc -= av.totals.totalTTC;
+      }
+    });
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [savedInvoices, savedAvoirs]);
   const DashboardPage = () => {
     const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
-    const monthlyData = useMemo(() => {
-      const map = {};
-      savedInvoices.forEach(inv => {
-        const m = inv.date.substring(0, 7);
-        if (!map[m]) map[m] = {
-          ht: 0,
-          ttc: 0,
-          count: 0,
-          products: {}
-        };
-        map[m].count++;
-        map[m].ht += inv.totals.totalHT;
-        map[m].ttc += inv.totals.totalTTC;
-        inv.lignes.forEach(l => {
-          if (!map[m].products[l.nom]) map[m].products[l.nom] = {
-            qte: 0,
-            ht: 0
-          };
-          map[m].products[l.nom].qte += l.qte;
-          map[m].products[l.nom].ht += l.prixHT * l.qte;
-        });
-      });
-      // Avoirs reduce
-      savedAvoirs.forEach(av => {
-        const m = av.date.substring(0, 7);
-        if (map[m]) {
-          map[m].ht -= av.totals.totalHT;
-          map[m].ttc -= av.totals.totalTTC;
-        }
-      });
-      return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
-    }, [savedInvoices, savedAvoirs]);
+    const monthlyData = dashboardMonthlyData;
     const totalCA = monthlyData.reduce((s, [, d]) => s + d.ttc, 0);
     const totalHT = monthlyData.reduce((s, [, d]) => s + d.ht, 0);
     const totalFactures = monthlyData.reduce((s, [, d]) => s + d.count, 0);
