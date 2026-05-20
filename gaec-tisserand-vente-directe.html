@@ -412,21 +412,24 @@ function VenteDirecteMobile() {
   };
   const totals = useMemo(() => {
     var ht20 = 0,
-      ht55 = 0;
+      ht55 = 0,
+      totalTTC = 0;
     panier.forEach(function (l) {
       if (l.tva === 5.5) ht55 += l.prixHT * l.qte;else ht20 += l.prixHT * l.qte;
+      // Tronquer le PU TTC d'abord, puis multiplier par qté
+      var ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      totalTTC += ttcUnit * l.qte;
     });
     var tva20 = Math.round(ht20 * 0.20 * 100) / 100;
     var tva55 = Math.round(ht55 * 0.055 * 100) / 100;
     var totalHT = Math.round((ht20 + ht55) * 100) / 100;
-    var totalTTC = Math.round((totalHT + tva20 + tva55) * 100) / 100;
     return {
       ht20: ht20,
       ht55: ht55,
       tva20: tva20,
       tva55: tva55,
       totalHT: totalHT,
-      totalTTC: totalTTC
+      totalTTC: Math.round(totalTTC * 100) / 100
     };
   }, [panier]);
   const nbArticles = panier.reduce(function (s, l) {

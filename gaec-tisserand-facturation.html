@@ -1356,15 +1356,18 @@ function App() {
     const y = new Date().getFullYear();
     const avoirNum = "AV-" + y + "-" + String(nextAvoirNum).padStart(4, "0");
     let ht20 = 0,
-      ht55 = 0;
+      ht55 = 0,
+      totalTTC = 0;
     lignesAvoir.forEach(l => {
       const ht = l.prixHT * l.qte;
       if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
+      const ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      totalTTC += ttcUnit * l.qte;
     });
     const tva20 = Math.round(ht20 * 0.20 * 100) / 100,
       tva55 = Math.round(ht55 * 0.055 * 100) / 100;
     const totalHT = Math.round((ht20 + ht55) * 100) / 100;
-    const totalTTC = Math.round((totalHT + tva20 + tva55) * 100) / 100;
+    totalTTC = Math.round(totalTTC * 100) / 100;
     const av = {
       id: Date.now(),
       num: avoirNum,
@@ -1404,7 +1407,8 @@ function App() {
     let ht20 = 0,
       ht55 = 0,
       vol = 0,
-      alc = 0;
+      alc = 0,
+      totalTTC = 0;
     lignes.forEach(l => {
       const ht = l.prixHT * l.qte;
       if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
@@ -1413,18 +1417,20 @@ function App() {
         vol += vL;
         if (l.alcool > 0) alc += vL * (l.alcool / 100);
       }
+      // Tronquer le PU TTC d'abord, puis multiplier par qté (cohérent avec l'affichage par ligne)
+      const ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      totalTTC += ttcUnit * l.qte;
     });
     const tva20 = Math.round(ht20 * 0.20 * 100) / 100;
     const tva55 = Math.round(ht55 * 0.055 * 100) / 100;
     const totalHT = Math.round((ht20 + ht55) * 100) / 100;
-    const totalTTC = Math.round((totalHT + tva20 + tva55) * 100) / 100;
     return {
       ht20,
       ht55,
       tva20,
       tva55,
       totalHT,
-      totalTTC,
+      totalTTC: Math.round(totalTTC * 100) / 100,
       vol,
       alc
     };
