@@ -483,7 +483,7 @@ function VenteDirecteMobile() {
       var lineTotal = pTTC * l.qte;
       return '<tr><td class="nom">' + l.nom + '</td><td class="cell">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td class="qte">' + l.qte + '</td><td class="prix">' + pTTC.toFixed(2).replace(".", ",") + ' \u20ac</td><td class="total">' + lineTotal.toFixed(2).replace(".", ",") + ' \u20ac</td></tr>';
     }).join("");
-    var nbEmpty = Math.max(0, 13 - data.lignes.length);
+    var nbEmpty = Math.max(0, 22 - data.lignes.length);
     for (var i = 0; i < nbEmpty; i++) {
       rowsHtml += '<tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>';
     }
