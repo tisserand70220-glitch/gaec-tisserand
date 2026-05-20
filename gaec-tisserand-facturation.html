@@ -4380,7 +4380,7 @@ function App() {
         flexDirection: "column",
         gap: 8
       }
-    }, savedBLs.map(bl => /*#__PURE__*/React.createElement("div", {
+    }, savedBLs.filter(bl => bl && bl.client && bl.lignes).map(bl => /*#__PURE__*/React.createElement("div", {
       key: bl.id,
       style: {
         padding: "14px 18px",
