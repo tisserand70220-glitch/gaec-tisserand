@@ -1091,6 +1091,24 @@ function App() {
           ...p,
           ...prodData
         } : p);
+        // Update lignes in current invoice (composite: 2 lines with _20 and _55 suffix)
+        setLignes(prev => prev.map(l => {
+          if (l.id === editingItem.id + "_20") return {
+            ...l,
+            nom: productForm.nom + " (20%)",
+            prixHT: p20,
+            prixTTC: t20,
+            volume: vol,
+            alcool: alc
+          };
+          if (l.id === editingItem.id + "_55") return {
+            ...l,
+            nom: productForm.nom + " (5,5%)",
+            prixHT: p55,
+            prixTTC: t55
+          };
+          return l;
+        }));
       } else {
         const nid = "prod_" + Date.now();
         u = [...products, {
@@ -1587,7 +1605,7 @@ function App() {
     if (!lignes.length) return;
     const s = ";",
       h = ["Produit", "Vol (cl)", "Alcool (%)", "TVA (%)", "Qté", "PU HT", "PU TTC", "Total HT"].join(s);
-    const r = lignes.map(l => [l.nom, l.volume || "", l.alcool || "", l.tva, l.qte, fmtN(l.prixHT), (Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100).toFixed(2).replace(".", ","), fmtN(l.prixHT * l.qte)].join(s));
+    const r = lignes.map(l => [l.nom, l.volume || "", l.alcool || "", l.tva, l.qte, fmtN(l.prixHT), fmtN(l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100), fmtN(l.prixHT * l.qte)].join(s));
     r.push("");
     r.push(["", "", "", "", "", "", "Grand Total TTC", fmtN(totals.totalTTC)].join(s));
     const blob = new Blob(["\uFEFF" + [h, ...r].join("\n")], {
@@ -2052,7 +2070,8 @@ function App() {
     }
   }, lignes.map((l, i) => {
     const totalHT = l.prixHT * l.qte;
-    const prixTTC = l.prixHT * (1 + l.tva / 100);
+    const prixTTCUnit = l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+    const totalTTC = prixTTCUnit * l.qte;
     return /*#__PURE__*/React.createElement("div", {
       key: l.id,
       style: {
@@ -2158,7 +2177,7 @@ function App() {
         fontSize: 12,
         color: C.muted
       }
-    }, "TTC: ", fmtTTC2(totalHT * (1 + l.tva / 100)))), /*#__PURE__*/React.createElement("button", {
+    }, "TTC: ", fmtTTC2(totalTTC))), /*#__PURE__*/React.createElement("button", {
       onClick: () => setLignes(lignes.filter(x => x.id !== l.id)),
       style: {
         width: 40,
