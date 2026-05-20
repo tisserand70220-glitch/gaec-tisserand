@@ -340,6 +340,10 @@ function VenteDirecteMobile() {
     return p;
   }, [catFilter, search, products, favorites]);
   const addItem = prod => {
+    var getTTC = function (item, tvaRate) {
+      if (item.prixTTC != null && item.prixTTC > 0) return item.prixTTC;
+      return Math.floor(item.prixHT * (1 + tvaRate / 100) * 100) / 100;
+    };
     if (prod.composite && prod.parts) {
       var id20 = prod.id + "_20",
         id55 = prod.id + "_55";
@@ -364,6 +368,7 @@ function VenteDirecteMobile() {
           nom: prod.nom + " (20%)",
           tva: 20,
           prixHT: p20.prixHT,
+          prixTTC: getTTC(p20, 20),
           volume: prod.volume,
           alcool: prod.alcool,
           qte: 1
@@ -373,6 +378,7 @@ function VenteDirecteMobile() {
           nom: prod.nom + " (5,5%)",
           tva: 5.5,
           prixHT: p55.prixHT,
+          prixTTC: getTTC(p55, 5.5),
           volume: 0,
           alcool: 0,
           qte: 1
@@ -388,6 +394,7 @@ function VenteDirecteMobile() {
           qte: l.qte + 1
         }) : l;
       }));else setPanier(panier.concat([Object.assign({}, prod, {
+        prixTTC: getTTC(prod, prod.tva || 20),
         qte: 1
       })]));
     }
@@ -413,23 +420,29 @@ function VenteDirecteMobile() {
   const totals = useMemo(() => {
     var ht20 = 0,
       ht55 = 0,
-      totalTTC = 0;
+      ttc20 = 0,
+      ttc55 = 0;
     panier.forEach(function (l) {
-      if (l.tva === 5.5) ht55 += l.prixHT * l.qte;else ht20 += l.prixHT * l.qte;
-      // Tronquer le PU TTC d'abord, puis multiplier par qté
-      var ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
-      totalTTC += ttcUnit * l.qte;
+      var ttcUnit = l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      if (l.tva === 5.5) {
+        ht55 += l.prixHT * l.qte;
+        ttc55 += ttcUnit * l.qte;
+      } else {
+        ht20 += l.prixHT * l.qte;
+        ttc20 += ttcUnit * l.qte;
+      }
     });
-    var tva20 = Math.round(ht20 * 0.20 * 100) / 100;
-    var tva55 = Math.round(ht55 * 0.055 * 100) / 100;
     var totalHT = Math.round((ht20 + ht55) * 100) / 100;
+    var totalTTC = Math.round((ttc20 + ttc55) * 100) / 100;
+    var tva20 = Math.round((ttc20 - ht20) * 100) / 100;
+    var tva55 = Math.round((ttc55 - ht55) * 100) / 100;
     return {
       ht20: ht20,
       ht55: ht55,
       tva20: tva20,
       tva55: tva55,
       totalHT: totalHT,
-      totalTTC: Math.round(totalTTC * 100) / 100
+      totalTTC: totalTTC
     };
   }, [panier]);
   const nbArticles = panier.reduce(function (s, l) {
@@ -482,7 +495,7 @@ function VenteDirecteMobile() {
     var data = inv;
     var t = data.totals;
     var rowsHtml = data.lignes.map(function (l, i) {
-      var pTTC = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      var pTTC = l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
       var lineTotal = pTTC * l.qte;
       return '<tr><td class="nom">' + l.nom + '</td><td class="cell">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td class="qte">' + l.qte + '</td><td class="prix">' + pTTC.toFixed(2).replace(".", ",") + ' \u20ac</td><td class="total">' + lineTotal.toFixed(2).replace(".", ",") + ' \u20ac</td></tr>';
     }).join("");
@@ -1182,7 +1195,7 @@ function VenteDirecteMobile() {
         color: C.goldDark,
         marginTop: 3
       }
-    }, fmtTTC2(p.prixHT * (1 + p.tva / 100)))), inCart ? /*#__PURE__*/React.createElement("div", {
+    }, fmtTTC2(p.prixTTC != null ? p.prixTTC : p.prixHT * (1 + p.tva / 100)))), inCart ? /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         alignItems: "center"
@@ -1402,7 +1415,7 @@ function VenteDirecteMobile() {
         color: C.goldDark
       }
     }, "\uD83D\uDCE6 ", nbArticles + " article" + (nbArticles > 1 ? "s" : "")), panier.map((l, i) => {
-      var ttcU = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      var ttcU = l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
       return /*#__PURE__*/React.createElement("div", {
         key: l.id,
         style: {

@@ -737,12 +737,15 @@ function App() {
     nom: "",
     tva: "20",
     prixHT: "",
+    prixTTC: "",
     volume: "",
     alcool: "",
     cat: "Eaux-de-vie",
     composite: false,
     prixHT20: "",
-    prixHT55: ""
+    prixHT55: "",
+    prixTTC20: "",
+    prixTTC55: ""
   });
   const [msg, setMsg] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -849,7 +852,33 @@ function App() {
     })();
     // Real-time listeners
     var unsubs = [subscribe("gt-products", function (d) {
-      if (d) setProducts(d);
+      if (!d) return;
+      // Migration: ajouter prixTTC = prixHT*(1+tva/100) pour les anciens produits sans prixTTC
+      var migrated = d.map(function (p) {
+        var needsMigration = p.prixTTC == null || p.composite && p.parts && p.parts.some(function (x) {
+          return x.prixTTC == null;
+        });
+        if (!needsMigration) return p;
+        var np = Object.assign({}, p);
+        if (np.prixTTC == null && np.prixHT != null) {
+          np.prixTTC = Math.round(np.prixHT * (1 + (np.tva || 20) / 100) * 100) / 100;
+        }
+        if (np.composite && np.parts) {
+          np.parts = np.parts.map(function (part) {
+            if (part.prixTTC != null) return part;
+            return Object.assign({}, part, {
+              prixTTC: Math.round(part.prixHT * (1 + part.tva / 100) * 100) / 100
+            });
+          });
+        }
+        return np;
+      });
+      setProducts(migrated);
+      // Sauver la migration si quelque chose a changé
+      var changed = migrated.some(function (p, i) {
+        return p.prixTTC !== d[i].prixTTC;
+      });
+      if (changed) save("gt-products", migrated);
     }), subscribe("gt-clients", function (d) {
       if (d) setClients(d);
     }), subscribe("gt-invoices", function (d) {
@@ -969,12 +998,15 @@ function App() {
       nom: "",
       tva: "20",
       prixHT: "",
+      prixTTC: "",
       volume: "",
       alcool: "",
       cat: categories[0] || "Eaux-de-vie",
       composite: false,
       prixHT20: "",
-      prixHT55: ""
+      prixHT55: "",
+      prixTTC20: "",
+      prixTTC55: ""
     });
     setShowProductModal(true);
   };
@@ -985,12 +1017,15 @@ function App() {
       nom: p.nom,
       tva: String(p.tva),
       prixHT: isComp ? "" : String(p.prixHT).replace(".", ","),
+      prixTTC: isComp ? "" : String(p.prixTTC != null ? p.prixTTC : (p.prixHT * (1 + (p.tva || 20) / 100)).toFixed(2)).replace(".", ","),
       volume: String(p.volume || ""),
       alcool: String(p.alcool || ""),
       cat: p.cat || "Divers",
       composite: isComp,
       prixHT20: isComp && p.parts ? String(p.parts.find(x => x.tva === 20)?.prixHT || "").replace(".", ",") : "",
-      prixHT55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixHT || "").replace(".", ",") : ""
+      prixHT55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixHT || "").replace(".", ",") : "",
+      prixTTC20: isComp && p.parts ? String(p.parts.find(x => x.tva === 20)?.prixTTC != null ? p.parts.find(x => x.tva === 20).prixTTC : ((p.parts.find(x => x.tva === 20)?.prixHT || 0) * 1.20).toFixed(2)).replace(".", ",") : "",
+      prixTTC55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixTTC != null ? p.parts.find(x => x.tva === 5.5).prixTTC : ((p.parts.find(x => x.tva === 5.5)?.prixHT || 0) * 1.055).toFixed(2)).replace(".", ",") : ""
     });
     setShowProductModal(true);
   };
@@ -1001,38 +1036,54 @@ function App() {
       nom: p.nom + " (copie)",
       tva: String(p.tva),
       prixHT: isComp ? "" : String(p.prixHT).replace(".", ","),
+      prixTTC: isComp ? "" : String(p.prixTTC != null ? p.prixTTC : (p.prixHT * (1 + (p.tva || 20) / 100)).toFixed(2)).replace(".", ","),
       volume: String(p.volume || ""),
       alcool: String(p.alcool || ""),
       cat: p.cat || "Divers",
       composite: isComp,
       prixHT20: isComp && p.parts ? String(p.parts.find(x => x.tva === 20)?.prixHT || "").replace(".", ",") : "",
-      prixHT55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixHT || "").replace(".", ",") : ""
+      prixHT55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixHT || "").replace(".", ",") : "",
+      prixTTC20: isComp && p.parts ? String(p.parts.find(x => x.tva === 20)?.prixTTC != null ? p.parts.find(x => x.tva === 20).prixTTC : ((p.parts.find(x => x.tva === 20)?.prixHT || 0) * 1.20).toFixed(2)).replace(".", ",") : "",
+      prixTTC55: isComp && p.parts ? String(p.parts.find(x => x.tva === 5.5)?.prixTTC != null ? p.parts.find(x => x.tva === 5.5).prixTTC : ((p.parts.find(x => x.tva === 5.5)?.prixHT || 0) * 1.055).toFixed(2)).replace(".", ",") : ""
     });
     setShowProductModal(true);
   };
   const saveProduct = async () => {
-    if (!productForm.nom.trim()) return;
+    if (!productForm.nom.trim()) {
+      alert("Le nom est obligatoire");
+      return;
+    }
     const vol = parseInt(productForm.volume) || 0;
     const alc = parseFloat((productForm.alcool || "").replace(",", ".")) || 0;
     let u;
     if (productForm.composite) {
       const p20 = parseFloat((productForm.prixHT20 || "").replace(",", ".")) || 0;
       const p55 = parseFloat((productForm.prixHT55 || "").replace(",", ".")) || 0;
+      const t20 = parseFloat((productForm.prixTTC20 || "").replace(",", ".")) || 0;
+      const t55 = parseFloat((productForm.prixTTC55 || "").replace(",", ".")) || 0;
+      if (p20 <= 0 || p55 <= 0 || t20 <= 0 || t55 <= 0) {
+        alert("Les 4 prix HT et TTC sont obligatoires");
+        return;
+      }
       const totalHT = p20 + p55;
+      const totalTTC = t20 + t55;
       const prodData = {
         nom: productForm.nom,
         tva: 20,
         prixHT: totalHT,
+        prixTTC: totalTTC,
         volume: vol,
         alcool: alc,
         cat: productForm.cat,
         composite: true,
         parts: [{
           tva: 20,
-          prixHT: p20
+          prixHT: p20,
+          prixTTC: t20
         }, {
           tva: 5.5,
-          prixHT: p55
+          prixHT: p55,
+          prixTTC: t55
         }]
       };
       if (editingItem) {
@@ -1049,13 +1100,19 @@ function App() {
       }
     } else {
       const pHT = parseFloat((productForm.prixHT || "").replace(",", ".")) || 0;
+      const pTTC = parseFloat((productForm.prixTTC || "").replace(",", ".")) || 0;
       const tva = parseFloat(productForm.tva) || 20;
+      if (pHT <= 0 || pTTC <= 0) {
+        alert("Le prix HT et le prix TTC sont obligatoires");
+        return;
+      }
       if (editingItem) {
         u = products.map(p => p.id === editingItem.id ? {
           ...p,
           nom: productForm.nom,
           tva,
           prixHT: pHT,
+          prixTTC: pTTC,
           volume: vol,
           alcool: alc,
           cat: productForm.cat,
@@ -1067,6 +1124,7 @@ function App() {
           nom: productForm.nom,
           tva,
           prixHT: pHT,
+          prixTTC: pTTC,
           volume: vol,
           alcool: alc
         } : l));
@@ -1077,6 +1135,7 @@ function App() {
           nom: productForm.nom,
           tva,
           prixHT: pHT,
+          prixTTC: pTTC,
           volume: vol,
           alcool: alc,
           cat: productForm.cat
@@ -1155,8 +1214,12 @@ function App() {
 
   // ─── LINE OPS ────
   const addToInvoice = prod => {
+    // Helper: get prixTTC with fallback
+    const getTTC = (item, tvaRate) => {
+      if (item.prixTTC != null && item.prixTTC > 0) return item.prixTTC;
+      return Math.floor(item.prixHT * (1 + tvaRate / 100) * 100) / 100;
+    };
     if (prod.composite && prod.parts) {
-      // Composite product → add two lines
       const id20 = prod.id + "_20";
       const id55 = prod.id + "_55";
       const p20 = prod.parts.find(x => x.tva === 20);
@@ -1175,6 +1238,7 @@ function App() {
           nom: prod.nom + " (20%)",
           tva: 20,
           prixHT: p20.prixHT,
+          prixTTC: getTTC(p20, 20),
           volume: prod.volume,
           alcool: prod.alcool,
           qte: 1,
@@ -1185,6 +1249,7 @@ function App() {
           nom: prod.nom + " (5,5%)",
           tva: 5.5,
           prixHT: p55.prixHT,
+          prixTTC: getTTC(p55, 5.5),
           volume: 0,
           alcool: 0,
           qte: 1,
@@ -1199,6 +1264,7 @@ function App() {
         qte: l.qte + 1
       } : l));else setLignes([...lignes, {
         ...prod,
+        prixTTC: getTTC(prod, prod.tva || 20),
         qte: 1
       }]);
     }
@@ -1357,17 +1423,23 @@ function App() {
     const avoirNum = "AV-" + y + "-" + String(nextAvoirNum).padStart(4, "0");
     let ht20 = 0,
       ht55 = 0,
-      totalTTC = 0;
+      ttc20 = 0,
+      ttc55 = 0;
     lignesAvoir.forEach(l => {
       const ht = l.prixHT * l.qte;
-      if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
-      const ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
-      totalTTC += ttcUnit * l.qte;
+      const ttc = (l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100) * l.qte;
+      if (l.tva === 5.5) {
+        ht55 += ht;
+        ttc55 += ttc;
+      } else {
+        ht20 += ht;
+        ttc20 += ttc;
+      }
     });
-    const tva20 = Math.round(ht20 * 0.20 * 100) / 100,
-      tva55 = Math.round(ht55 * 0.055 * 100) / 100;
     const totalHT = Math.round((ht20 + ht55) * 100) / 100;
-    totalTTC = Math.round(totalTTC * 100) / 100;
+    const totalTTC = Math.round((ttc20 + ttc55) * 100) / 100;
+    const tva20 = Math.round((ttc20 - ht20) * 100) / 100;
+    const tva55 = Math.round((ttc55 - ht55) * 100) / 100;
     const av = {
       id: Date.now(),
       num: avoirNum,
@@ -1406,31 +1478,37 @@ function App() {
   const totals = useMemo(() => {
     let ht20 = 0,
       ht55 = 0,
+      ttc20 = 0,
+      ttc55 = 0,
       vol = 0,
-      alc = 0,
-      totalTTC = 0;
+      alc = 0;
     lignes.forEach(l => {
       const ht = l.prixHT * l.qte;
-      if (l.tva === 5.5) ht55 += ht;else ht20 += ht;
+      const ttc = (l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100) * l.qte;
+      if (l.tva === 5.5) {
+        ht55 += ht;
+        ttc55 += ttc;
+      } else {
+        ht20 += ht;
+        ttc20 += ttc;
+      }
       if (l.volume > 0) {
         const vL = l.volume / 100 * l.qte;
         vol += vL;
         if (l.alcool > 0) alc += vL * (l.alcool / 100);
       }
-      // Tronquer le PU TTC d'abord, puis multiplier par qté (cohérent avec l'affichage par ligne)
-      const ttcUnit = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
-      totalTTC += ttcUnit * l.qte;
     });
-    const tva20 = Math.round(ht20 * 0.20 * 100) / 100;
-    const tva55 = Math.round(ht55 * 0.055 * 100) / 100;
     const totalHT = Math.round((ht20 + ht55) * 100) / 100;
+    const totalTTC = Math.round((ttc20 + ttc55) * 100) / 100;
+    const tva20 = Math.round((ttc20 - ht20) * 100) / 100;
+    const tva55 = Math.round((ttc55 - ht55) * 100) / 100;
     return {
       ht20,
       ht55,
       tva20,
       tva55,
       totalHT,
-      totalTTC: Math.round(totalTTC * 100) / 100,
+      totalTTC,
       vol,
       alc
     };
@@ -1449,7 +1527,7 @@ function App() {
     var data = inv;
     var t = data.totals;
     var rowsHtml = data.lignes.map(function (l, i) {
-      var pTTC = Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
+      var pTTC = l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
       var lineTotal = pTTC * l.qte;
       return '<tr><td class="nom">' + l.nom + '</td><td class="cell">' + (l.volume > 0 ? l.volume + ' cl' : '') + '</td><td class="qte">' + l.qte + '</td><td class="prix">' + pTTC.toFixed(2).replace(".", ",") + ' \u20ac</td><td class="total">' + lineTotal.toFixed(2).replace(".", ",") + ' \u20ac</td></tr>';
     }).join("");
@@ -2494,7 +2572,7 @@ function App() {
         textAlign: "right",
         fontWeight: 600
       }
-    }, fmtTTC2(l.prixHT * (1 + l.tva / 100))), /*#__PURE__*/React.createElement("td", {
+    }, fmtTTC2(l.prixTTC != null ? l.prixTTC : l.prixHT * (1 + l.tva / 100))), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "5px 8px",
         borderBottom: "1px solid #e8e0d0",
@@ -5495,7 +5573,7 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     style: label
-  }, "Prix HT part 20% (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+  }, "Prix HT part 20% (\u20AC) *"), /*#__PURE__*/React.createElement("input", {
     value: productForm.prixHT20,
     onChange: e => setProductForm({
       ...productForm,
@@ -5504,11 +5582,29 @@ function App() {
     style: input
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     style: label
-  }, "Prix HT part 5,5% (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+  }, "Prix TTC part 20% (\u20AC) *"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.prixTTC20,
+    onChange: e => setProductForm({
+      ...productForm,
+      prixTTC20: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Prix HT part 5,5% (\u20AC) *"), /*#__PURE__*/React.createElement("input", {
     value: productForm.prixHT55,
     onChange: e => setProductForm({
       ...productForm,
       prixHT55: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Prix TTC part 5,5% (\u20AC) *"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.prixTTC55,
+    onChange: e => setProductForm({
+      ...productForm,
+      prixTTC55: e.target.value
     }),
     style: input
   }))), (productForm.prixHT20 || productForm.prixHT55) && /*#__PURE__*/React.createElement("div", {
@@ -5518,10 +5614,10 @@ function App() {
       color: C.purple,
       fontWeight: 600
     }
-  }, "Total HT : " + fmt((parseFloat((productForm.prixHT20 || "0").replace(",", ".")) || 0) + (parseFloat((productForm.prixHT55 || "0").replace(",", ".")) || 0)))) : /*#__PURE__*/React.createElement("div", {
+  }, "Total HT : " + fmt((parseFloat((productForm.prixHT20 || "0").replace(",", ".")) || 0) + (parseFloat((productForm.prixHT55 || "0").replace(",", ".")) || 0)) + " · Total TTC : " + fmt((parseFloat((productForm.prixTTC20 || "0").replace(",", ".")) || 0) + (parseFloat((productForm.prixTTC55 || "0").replace(",", ".")) || 0)))) : /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
+      gridTemplateColumns: "1fr 1fr 1fr",
       gap: 12
     }
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
@@ -5539,11 +5635,20 @@ function App() {
     value: "5.5"
   }, "5,5%"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     style: label
-  }, "Prix HT (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+  }, "Prix HT (\u20AC) *"), /*#__PURE__*/React.createElement("input", {
     value: productForm.prixHT,
     onChange: e => setProductForm({
       ...productForm,
       prixHT: e.target.value
+    }),
+    style: input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: label
+  }, "Prix TTC (\u20AC) *"), /*#__PURE__*/React.createElement("input", {
+    value: productForm.prixTTC,
+    onChange: e => setProductForm({
+      ...productForm,
+      prixTTC: e.target.value
     }),
     style: input
   }))), /*#__PURE__*/React.createElement("div", {
