@@ -75,6 +75,7 @@ const EMETTEUR = {
   adresse: "78 Blanzey, 70220 Fougerolles",
   rcs: "Lure D 389 031 949",
   gestion: "92 D 67",
+  siret: "389 031 949 00024",
   banque: "Crédit Agricole Fougerolles"
 };
 const PRODUCTS = [{
@@ -509,7 +510,7 @@ function VenteDirecteMobile() {
     var tva20Str = t.tva20 > 0 ? fmt2(t.tva20) : "\u2013 \u20ac";
     var tva55Str = t.tva55 > 0 ? fmt2(t.tva55) : "\u2013 \u20ac";
     var h = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>' + data.num + '</title><style>' + css + '</style></head><body>';
-    h += '<div class="brand-header"><img class="brand-logo" src="data:image/png;base64,' + LOGO_B64 + '" /><div class="brand-info"><div class="brand-name">GAEC TISSERAND</div><div class="brand-tagline">Distillerie \u00b7 Eaux-de-vie \u00b7 Liqueurs</div><div class="brand-details"><strong>Adresse :</strong> ' + EMETTEUR.adresse + '<br><strong>R.C.S. :</strong> ' + EMETTEUR.rcs + ' &nbsp;\u00b7&nbsp; <strong>Gestion :</strong> ' + EMETTEUR.gestion + '<br><strong>Banque :</strong> ' + EMETTEUR.banque + '</div></div></div>';
+    h += '<div class="brand-header"><img class="brand-logo" src="data:image/png;base64,' + LOGO_B64 + '" /><div class="brand-info"><div class="brand-name">GAEC TISSERAND</div><div class="brand-tagline">Distillerie \u00b7 Eaux-de-vie \u00b7 Liqueurs</div><div class="brand-details"><strong>Adresse :</strong> ' + EMETTEUR.adresse + '<br><strong>R.C.S. :</strong> ' + EMETTEUR.rcs + ' &nbsp;\u00b7&nbsp; <strong>Gestion :</strong> ' + EMETTEUR.gestion + '<br><strong>SIRET du si\u00e8ge social :</strong> ' + EMETTEUR.siret + '<br><strong>Banque :</strong> ' + EMETTEUR.banque + '</div></div></div>';
     h += '<div class="info-row"><div class="client-box"><div class="label">Factur\u00e9 \u00e0</div><div class="nom">' + data.client.nom + '</div><div class="adresse">' + (data.client.adresse || '') + (data.client.adresse && data.client.cp ? '<br>' : '') + (data.client.cp || '') + '</div></div>';
     h += '<div class="facture-meta"><div class="label">N\u00b0 de facture</div><div class="num">' + data.num + '</div><div class="date">\u00c9mise le ' + formatDate(data.date) + '</div></div></div>';
     h += '<table class="produits"><thead><tr><th style="width:30%">D\u00e9signation</th><th style="width:8%">Vol.</th><th style="width:7%">Qt\u00e9</th><th style="width:13%">PU HT</th><th style="width:13%">PU TTC</th><th style="width:14%">Total HT</th><th style="width:15%">Total TTC</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>';
@@ -617,7 +618,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 100
     }
-  }, "\uD83C\uDF52"), /*#__PURE__*/React.createElement("span", {
+  }, "🍒"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 24,
       color: C.gold
@@ -628,7 +629,7 @@ function VenteDirecteMobile() {
       color: C.muted,
       marginTop: 8
     }
-  }, "Cr\xE9ation Eric Tisserand \xB7 v2.1.0")));
+  }, "Création Eric Tisserand · v2.2.0")));
   if (step === 0) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement("div", {
@@ -637,7 +638,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 72
     }
-  }, "\uD83C\uDFE1"), /*#__PURE__*/React.createElement("div", {
+  }, "🏡"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 28,
       fontWeight: 800
@@ -648,14 +649,14 @@ function VenteDirecteMobile() {
       color: C.muted,
       marginBottom: 24
     }
-  }, "Vente directe \xE0 la ferme"), /*#__PURE__*/React.createElement("button", {
+  }, "Vente directe à la ferme"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setStep(1),
     style: bb(C.accent)
   }, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 32
     }
-  }, "\uD83E\uDDFE"), " Nouvelle vente"), /*#__PURE__*/React.createElement("button", {
+  }, "🧾"), " Nouvelle vente"), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       setVoiceOn(!voiceOn);
       if (!voiceOn) speak("Guide vocal activé");
@@ -676,7 +677,7 @@ function VenteDirecteMobile() {
       color: C.muted,
       opacity: 0.7
     }
-  }, "Version 2.1.0")));
+  }, "Version 2.2.0")));
   if (step === 1) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement(VoiceToggle, null), /*#__PURE__*/React.createElement("div", {
@@ -685,7 +686,7 @@ function VenteDirecteMobile() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sLbl
-  }, "\xC9TAPE 1 / 6"), /*#__PURE__*/React.createElement("div", {
+  }, "ÉTAPE 1 / 6"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...sBar,
       width: "16%"
@@ -705,7 +706,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 36
     }
-  }, "\u270D\uFE0F"), /*#__PURE__*/React.createElement("div", {
+  }, "✍️"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 26,
       fontWeight: 800
@@ -744,7 +745,7 @@ function VenteDirecteMobile() {
       opacity: nom.trim() ? 1 : 0.4,
       whiteSpace: "nowrap"
     }
-  }, "\u2192")), /*#__PURE__*/React.createElement("div", {
+  }, "→")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       color: nom.trim() ? C.accent : C.danger,
@@ -758,7 +759,7 @@ function VenteDirecteMobile() {
       fontSize: 16,
       marginTop: 24
     }
-  }, "\u2190 Retour")));
+  }, "← Retour")));
   if (step === 2) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement(VoiceToggle, null), /*#__PURE__*/React.createElement("div", {
@@ -767,7 +768,7 @@ function VenteDirecteMobile() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sLbl
-  }, "\xC9TAPE 2 / 6"), /*#__PURE__*/React.createElement("div", {
+  }, "ÉTAPE 2 / 6"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...sBar,
       width: "33%"
@@ -787,12 +788,12 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 36
     }
-  }, "\uD83D\uDC64"), /*#__PURE__*/React.createElement("div", {
+  }, "👤"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 26,
       fontWeight: 800
     }
-  }, "Pr\xE9nom du client")), /*#__PURE__*/React.createElement("div", {
+  }, "Prénom du client")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10,
@@ -823,7 +824,7 @@ function VenteDirecteMobile() {
       cursor: "pointer",
       whiteSpace: "nowrap"
     }
-  }, "\u2192")), /*#__PURE__*/React.createElement("div", {
+  }, "→")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       color: C.muted,
@@ -836,7 +837,7 @@ function VenteDirecteMobile() {
       fontSize: 16,
       marginTop: 24
     }
-  }, "\u2190 Retour")));
+  }, "← Retour")));
   if (step === 3) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement(VoiceToggle, null), /*#__PURE__*/React.createElement("div", {
@@ -845,7 +846,7 @@ function VenteDirecteMobile() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sLbl
-  }, "\xC9TAPE 3 / 6"), /*#__PURE__*/React.createElement("div", {
+  }, "ÉTAPE 3 / 6"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...sBar,
       width: "50%"
@@ -856,7 +857,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 48
     }
-  }, "\uD83D\uDCCD"), /*#__PURE__*/React.createElement("div", {
+  }, "📍"), /*#__PURE__*/React.createElement("div", {
     style: ttl
   }, "Saisir une adresse ?"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -881,7 +882,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 32
     }
-  }, "\u2705"), " Oui"), /*#__PURE__*/React.createElement("button", {
+  }, "✅"), " Oui"), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       setAdresse("");
       setCp("");
@@ -895,14 +896,14 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 32
     }
-  }, "\u23ED\uFE0F"), " Non")), /*#__PURE__*/React.createElement("button", {
+  }, "⏭️"), " Non")), /*#__PURE__*/React.createElement("button", {
     onClick: () => setStep(2),
     style: {
       ...bb("transparent", C.muted),
       fontSize: 16,
       marginTop: 8
     }
-  }, "\u2190 Retour")));
+  }, "← Retour")));
   if (step === 4) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement(VoiceToggle, null), /*#__PURE__*/React.createElement("div", {
@@ -911,7 +912,7 @@ function VenteDirecteMobile() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sLbl
-  }, "\xC9TAPE 3 / 6 \u2014 Adresse"), /*#__PURE__*/React.createElement("div", {
+  }, "ÉTAPE 3 / 6 — Adresse"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...sBar,
       width: "50%"
@@ -931,7 +932,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 36
     }
-  }, "\uD83C\uDFE0"), /*#__PURE__*/React.createElement("div", {
+  }, "🏠"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 26,
       fontWeight: 800
@@ -967,20 +968,20 @@ function VenteDirecteMobile() {
       cursor: "pointer",
       whiteSpace: "nowrap"
     }
-  }, "\u2192")), /*#__PURE__*/React.createElement("div", {
+  }, "→")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       color: C.muted,
       marginBottom: 16
     }
-  }, "Num\xE9ro et rue"), /*#__PURE__*/React.createElement("button", {
+  }, "Numéro et rue"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setStep(3),
     style: {
       ...bb("transparent", C.muted),
       fontSize: 16,
       marginTop: 24
     }
-  }, "\u2190 Retour")));
+  }, "← Retour")));
   if (step === 5) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement(VoiceToggle, null), /*#__PURE__*/React.createElement("div", {
@@ -989,7 +990,7 @@ function VenteDirecteMobile() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sLbl
-  }, "\xC9TAPE 3 / 6 \u2014 Ville"), /*#__PURE__*/React.createElement("div", {
+  }, "ÉTAPE 3 / 6 — Ville"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...sBar,
       width: "50%"
@@ -1009,7 +1010,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 36
     }
-  }, "\uD83D\uDCEE"), /*#__PURE__*/React.createElement("div", {
+  }, "📮"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 26,
       fontWeight: 800
@@ -1045,7 +1046,7 @@ function VenteDirecteMobile() {
       cursor: "pointer",
       whiteSpace: "nowrap"
     }
-  }, "\u2192")), /*#__PURE__*/React.createElement("div", {
+  }, "→")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       color: C.muted,
@@ -1058,7 +1059,7 @@ function VenteDirecteMobile() {
       fontSize: 16,
       marginTop: 24
     }
-  }, "\u2190 Retour")));
+  }, "← Retour")));
   if (step === 6) return /*#__PURE__*/React.createElement("div", {
     style: fs
   }, /*#__PURE__*/React.createElement(VoiceToggle, null), /*#__PURE__*/React.createElement("div", {
@@ -1076,18 +1077,18 @@ function VenteDirecteMobile() {
     }
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: sLbl
-  }, "\xC9TAPE 4 / 6"), /*#__PURE__*/React.createElement("div", {
+  }, "ÉTAPE 4 / 6"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 22,
       fontWeight: 800
     }
-  }, "\uD83C\uDF77 Les produits")), /*#__PURE__*/React.createElement("div", {
+  }, "🍷 Les produits")), /*#__PURE__*/React.createElement("div", {
     style: {
       ...sBar,
       width: 60
     }
   })), /*#__PURE__*/React.createElement("input", {
-    placeholder: "\uD83D\uDD0D Rechercher...",
+    placeholder: "🔍 Rechercher...",
     value: search,
     onChange: e => setSearch(e.target.value),
     style: {
@@ -1121,7 +1122,7 @@ function VenteDirecteMobile() {
       cursor: "pointer",
       fontFamily: "inherit"
     }
-  }, "\u2B50 Favoris"), ["all"].concat(categories).map(c => /*#__PURE__*/React.createElement("button", {
+  }, "⭐ Favoris"), ["all"].concat(categories).map(c => /*#__PURE__*/React.createElement("button", {
     key: c,
     onClick: () => setCatFilter(c),
     style: {
@@ -1224,7 +1225,7 @@ function VenteDirecteMobile() {
         cursor: "pointer",
         color: C.danger
       }
-    }, "\u2212"), /*#__PURE__*/React.createElement("div", {
+    }, "−"), /*#__PURE__*/React.createElement("div", {
       style: {
         width: 52,
         height: 52,
@@ -1309,7 +1310,7 @@ function VenteDirecteMobile() {
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "Valider \u2192")), nbArticles === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Valider →")), nbArticles === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "12px 16px"
     }
@@ -1319,7 +1320,7 @@ function VenteDirecteMobile() {
       ...bb("#eee", C.text),
       fontSize: 18
     }
-  }, "\u2190 Retour")));
+  }, "← Retour")));
   if (step === 7) {
     var clientNom = (prenom ? prenom + " " : "") + nom;
     return /*#__PURE__*/React.createElement("div", {
@@ -1330,7 +1331,7 @@ function VenteDirecteMobile() {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: sLbl
-    }, "\xC9TAPE 5 / 6"), /*#__PURE__*/React.createElement("div", {
+    }, "ÉTAPE 5 / 6"), /*#__PURE__*/React.createElement("div", {
       style: {
         ...sBar,
         width: "83%"
@@ -1378,7 +1379,7 @@ function VenteDirecteMobile() {
         fontWeight: 700,
         color: C.muted
       }
-    }, "N\xB0"), /*#__PURE__*/React.createElement("div", {
+    }, "N°"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 14,
         fontWeight: 700,
@@ -1419,7 +1420,7 @@ function VenteDirecteMobile() {
         fontWeight: 700,
         color: C.goldDark
       }
-    }, "\uD83D\uDCE6 ", nbArticles + " article" + (nbArticles > 1 ? "s" : "")), panier.map((l, i) => {
+    }, "📦 ", nbArticles + " article" + (nbArticles > 1 ? "s" : "")), panier.map((l, i) => {
       var ttcU = l.prixTTC != null ? l.prixTTC : Math.floor(l.prixHT * (1 + l.tva / 100) * 100) / 100;
       return /*#__PURE__*/React.createElement("div", {
         key: l.id,
@@ -1533,7 +1534,7 @@ function VenteDirecteMobile() {
         fontWeight: 700,
         cursor: "pointer"
       }
-    }, "\u2190 Modifier"), /*#__PURE__*/React.createElement("button", {
+    }, "← Modifier"), /*#__PURE__*/React.createElement("button", {
       onClick: saveAndPrint,
       style: {
         flex: 1,
@@ -1554,7 +1555,7 @@ function VenteDirecteMobile() {
       style: {
         fontSize: 24
       }
-    }, "\uD83D\uDDA8\uFE0F"), " Enregistrer et imprimer")));
+    }, "🖨️"), " Enregistrer et imprimer")));
   }
   if (step === 8) return /*#__PURE__*/React.createElement("div", {
     style: fs
@@ -1567,14 +1568,14 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 60
     }
-  }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+  }, "✅"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 28,
       fontWeight: 800,
       color: C.accent,
       marginTop: 8
     }
-  }, "Facture enregistr\xE9e !"), lastSaved && /*#__PURE__*/React.createElement("div", {
+  }, "Facture enregistrée !"), lastSaved && /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.accentLight,
       borderRadius: 16,
@@ -1612,7 +1613,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 26
     }
-  }, "\uD83D\uDDA8\uFE0F"), " R\xE9imprimer"), /*#__PURE__*/React.createElement("button", {
+  }, "🖨️"), " Réimprimer"), /*#__PURE__*/React.createElement("button", {
     onClick: newFacture,
     style: {
       ...bb(C.accent),
@@ -1622,7 +1623,7 @@ function VenteDirecteMobile() {
     style: {
       fontSize: 26
     }
-  }, "\uD83E\uDDFE"), " Nouvelle vente")));
+  }, "🧾"), " Nouvelle vente")));
   return null;
 }
 ReactDOM.render(React.createElement(VenteDirecteMobile), document.getElementById("root"));
