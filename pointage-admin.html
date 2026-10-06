@@ -19,6 +19,8 @@
   #login p{text-align:center;opacity:.7;margin:4px 0 28px}
   #login input{width:100%;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font:inherit;font-size:16px;margin-bottom:12px}
   #login button{width:100%;padding:16px;border:0;border-radius:12px;background:var(--cerise);color:#fff;font-size:17px;font-weight:800;margin-top:6px}
+  .version{font-size:11px;opacity:.5;letter-spacing:.02em}
+  #login .version{text-align:center;margin-top:16px}
   #login .err{color:var(--or);text-align:center;font-size:14px;min-height:20px;margin-top:10px}
   /* app */
   #app{display:none;grid-template-columns:230px 1fr;min-height:100vh}
@@ -100,6 +102,7 @@
     <input id="mdp" type="password" placeholder="Mot de passe" autocomplete="current-password">
     <button id="btnLogin">Se connecter</button>
     <div class="err" id="loginErr"></div>
+    <div class="version">Pointage gestion v1.1 · 06/10/2026</div>
   </form>
 </section>
 
@@ -113,6 +116,7 @@
       <button data-page="reglages">Réglages</button>
     </div>
     <button class="deco" id="btnDeco">Se déconnecter</button>
+    <div class="version">Version v1.1 · 06/10/2026</div>
   </aside>
   <main>
     <div id="pageMois">
